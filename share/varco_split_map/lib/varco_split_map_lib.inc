@@ -85,8 +85,8 @@ get_config_params()
           print Prefix"_"$0;
        } ' ${config_file} )
 
-	# eval "${config_params}"
-  echo -e "${config_params[@]}"
+	eval "${config_params}"
+  #echo -e "${config_params[@]}"
 }
 
 
