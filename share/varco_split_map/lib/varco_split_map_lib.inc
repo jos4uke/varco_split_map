@@ -64,9 +64,9 @@ get_config_sections()
 }
 
 #--------------------------------------------------------------
-# Function : get_config_params config_file config
-# Purpose  : Get variables (prefixed by corresponding config) from config in config file
-get_config_params()
+# Function : set_config_params config_file config
+# Purpose  : Set variables (prefixed by corresponding config) from config in config file
+set_config_params()
 {
 	typeset config_file=$1
   typeset config=$2
