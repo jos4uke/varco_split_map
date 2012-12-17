@@ -51,7 +51,7 @@ tolower()
     return $retval
 }
 
-#-----------------------------------------------------
+#--------------------------------------------------------------
 # Function: get_config_sections config_file
 # Purpose : Print the list of config sections from config file
 get_config_sections()
@@ -63,7 +63,31 @@ get_config_sections()
    ' ${config_file}
 }
 
+#--------------------------------------------------------------
+# Function : get_config_params config_file config
+# Purpose  : Get variables (prefixed by corresponding config) from config in config file
+get_config_params()
+{
+	typeset config_file=$1
+  typeset config=$2
+  typeset config_params
 
+  config_params=$( 
+       awk -F= -v Config="${config}" -v Prefix="${config}" '
+       BEGIN { 
+          Config = toupper(Config);
+          patternConfig = "\\[" Config "]";
+       }
+       toupper($0)  ~ patternConfig,(/\[/ && toupper($0) !~ patternConfig)  { 
+          if (/\[/ || NF <2) next;
+          sub(/^[[:space:]]*/, "");
+          sub(/[[:space:]]*=[[:space:]]/, "=");
+          print Prefix"_"$0;
+       } ' ${config_file} )
+
+	# eval "${config_params}"
+  echo -e "${config_params[@]}"
+}
 
 
 
