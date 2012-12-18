@@ -56,25 +56,32 @@ tolower()
 # Purpose : Print the list of config sections from config file
 get_config_sections()
 {
-   typeset config_file=$1
+    typeset config_file=$1
 
-   awk -F '[][]' '
+    awk -F '[][]' '
       NF==3 && $0 ~ /^\[.*\]/ { print $2 }
-   ' ${config_file}
+      ' ${config_file} 2>&1
+    rtrn=$?
+    if [[ $rtrn -ne 0 ]]; then
+	echo -e "$(date '+%Y%m%d %r') [$0] Failed Error parsing configuration sections in ${config_file}." >&2
+	return $rtrn
+    else
+	return $rtrn
+    fi
 }
 
-#--------------------------------------------------------------
+#-------------------------------------------------------------------------
 # Function : set_config_params config_file config_section [config_prefix]
 # Purpose  : Set variables (prefixed by config_prefix and corresponding config_section) from config_section in config file
 set_config_params()
 {
-	typeset config_file=$1
-  typeset config_section=$2
-	typeset config_prefix=$3
-  typeset config_params
+    typeset config_file=$1
+    typeset config_section=$2
+    typeset config_prefix=$3
+    typeset config_params
 
-	[[ -n $config_prefix ]] && config_prefix=$config_prefix"_"
-  config_params=$( 
+    [[ -n $config_prefix ]] && config_prefix=$config_prefix"_"
+    config_params=$( 
        awk -F= -v Config="${config_section}" -v Prefix="${config_prefix}" '
        BEGIN { 
           Config = toupper(Config);
@@ -86,10 +93,23 @@ set_config_params()
           sub(/^[[:space:]]*/, "");
           sub(/[[:space:]]*=[[:space:]]/, "=");
           print Prefix Config"_"$0;
-       } ' ${config_file} )
+       } ' ${config_file} 2>&1)
+    rtrn=$?
 
-	eval "${config_params}"
-  echo -e "${config_params[@]}"
+    if [[ $rtrn -ne 0 ]]; then
+	echo -e "$(date '+%Y%m%d %r') [set_config_params] Failed Error parsing configuration parameters in ${config_file}." >&2
+	return $rtrn
+    else
+	eval "${config_params}" 2>&1
+        #echo -e "${config_params[@]}"
+	rtrn=$?
+	if [[ $rtrn -ne 0 ]]; then
+	    echo -e "$(date '+%Y%m%d %r') [set_config_params] Failed Error setting configuration parameters from ${config_file}." >&2
+	    return $rtrn
+	else
+	    return $rtrn
+	fi
+    fi
 }
 
 
