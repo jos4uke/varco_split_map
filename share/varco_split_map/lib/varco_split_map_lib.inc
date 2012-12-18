@@ -1,11 +1,15 @@
 #! /bin/bash
 
+# TODO: add license copyright 2012
+
 #
 # VARCO_SPLIT_MAP FUNCTIONS LIBRARY
 #
+# Author: Joseph Tran <Joseph.Tran@versailles.inra.fr>
+#
+# Date: 2012-12-17 
+#
 
-# author: Joseph Tran <Joseph.Tran@versailles.inra.fr>
-# TODO: add license copyright 2012
 
 #-------------------
 # in_array function
