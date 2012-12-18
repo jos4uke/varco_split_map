@@ -73,8 +73,9 @@ set_config_params()
 	typeset config_prefix=$3
   typeset config_params
 
+	[[ -n $config_prefix ]] && config_prefix=$config_prefix"_"
   config_params=$( 
-       awk -F= -v Config="${config_section}" -v Prefix="${config_prefix}_" '
+       awk -F= -v Config="${config_section}" -v Prefix="${config_prefix}" '
        BEGIN { 
           Config = toupper(Config);
 					Prefix = toupper(Prefix);
@@ -88,7 +89,7 @@ set_config_params()
        } ' ${config_file} )
 
 	eval "${config_params}"
-  #echo -e "${config_params[@]}"
+  echo -e "${config_params[@]}"
 }
 
 
