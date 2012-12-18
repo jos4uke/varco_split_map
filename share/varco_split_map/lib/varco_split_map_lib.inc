@@ -64,25 +64,27 @@ get_config_sections()
 }
 
 #--------------------------------------------------------------
-# Function : set_config_params config_file config
-# Purpose  : Set variables (prefixed by corresponding config) from config in config file
+# Function : set_config_params config_file config_section [config_prefix]
+# Purpose  : Set variables (prefixed by config_prefix and corresponding config_section) from config_section in config file
 set_config_params()
 {
 	typeset config_file=$1
-  typeset config=$2
+  typeset config_section=$2
+	typeset config_prefix=$3
   typeset config_params
 
   config_params=$( 
-       awk -F= -v Config="${config}" -v Prefix="${config}" '
+       awk -F= -v Config="${config_section}" -v Prefix="${config_prefix}_" '
        BEGIN { 
           Config = toupper(Config);
+					Prefix = toupper(Prefix);
           patternConfig = "\\[" Config "]";
        }
        toupper($0)  ~ patternConfig,(/\[/ && toupper($0) !~ patternConfig)  { 
           if (/\[/ || NF <2) next;
           sub(/^[[:space:]]*/, "");
           sub(/[[:space:]]*=[[:space:]]/, "=");
-          print Prefix"_"$0;
+          print Prefix Config"_"$0;
        } ' ${config_file} )
 
 	eval "${config_params}"
