@@ -172,6 +172,18 @@ fi
 # cf lib for a function to tell if average cpu load is ok else wait a minute
 
 #
+# Check for DATA_ROOT_DIR exitence
+#
+if [[ -d $DATA_ROOT_DIR ]]; then
+    echo "$(date '+%Y_%m_%d %R') [$(basename $0)] $DATA_ROOT_DIR exists and is a directory." | tee $LOG_DIR/$LOGFILE 2>&1
+else
+    echo "$(date '+%Y_%m_%d %R') [$(basename $0)] Failed $DATA_ROOT_DIR does not exist or is not a directory." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %R') [Pipeline error] Exits the pipeline." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %R') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    exit 1
+fi
+
+#
 # Test for absence of user config file
 # if present ok continue else display warning message and exit
 #
@@ -213,12 +225,12 @@ else
 fi
 
 #
-# Check for parameters validity: TODO
-# 1. check DATA_ROOT_DIR path existence
-# 2. cf lib implement a function to check for config parameters validity
+# Check for parameters validity
+# cf lib implement a function to check for config parameters validity: TODO
+#
 
 #
-# Override batch_size: TODO
+# Override  defined batch_size: TODO
 # 1. get the number of cores
 # 2. get the number of threads to use for gsnap
 # 3. compute max_batch_size=#cores/#threads
