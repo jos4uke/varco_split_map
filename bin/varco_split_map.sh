@@ -42,6 +42,10 @@ PROD_VARCO_SPLIT_MAP_USER_CONFIG=$WORKING_DIR/$(basename ${0%.*})_user.config
 DEV_VARCO_SPLIT_MAP_USER_CONFIG=$VARCO_SPLIT_MAP_SHARED/etc/$(basename ${0%.*})_user.config
 VARCO_SPLIT_MAP_USER_CONFIG=$DEV_VARCO_SPLIT_MAP_USER_CONFIG # TO BE CHANGED WHEN SWITCHING TO PROD
 
+MAX_NUMB_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
+MAX_NUMB_CORES_ALLOWED=$[$MAX_NUMB_CORES/2]
+MAX_BATCH_SIZE=0
+
 LOG_DIR="log"
 TRIMMING_DIR="01_Trimming"
 MAPPING_DIR="02_Mapping"
@@ -88,8 +92,10 @@ User Configuration File: here is the main configuration sections and their corre
     - batch_size (default=4)
                          This option controls the number of samples for each batch. 
                          Its value is determined dynamically if the user value exceeds the max batch size. 
-                         The max batch size equals the ratio number of processors 
+                         The max batch size equals the ratio max number of processors allowed 
                          divided by the number of threads (mapper option).
+                         The max number of processors allowed is fairly set by default 
+                         to 50% of max number of processors available.
                          If batch_size lower or equal to max batch size, then use batch_size value.
                          Else, batch_size equals half max batch size.
     - clean (default=FALSE)
@@ -172,7 +178,7 @@ fi
 # cf lib for a function to tell if average cpu load is ok else wait a minute
 
 #
-# Check for DATA_ROOT_DIR exitence
+# Check for DATA_ROOT_DIR existence
 #
 if [[ -d $DATA_ROOT_DIR ]]; then
     echo "$(date '+%Y_%m_%d %R') [$(basename $0)] $DATA_ROOT_DIR exists and is a directory." | tee $LOG_DIR/$LOGFILE 2>&1
@@ -230,12 +236,28 @@ fi
 #
 
 #
-# Override  defined batch_size: TODO
+# Override  defined batch_size:
 # 1. get the number of cores
 # 2. get the number of threads to use for gsnap
-# 3. compute max_batch_size=#cores/#threads
+# 3. compute max_batch_size=#max_cores_allowed/#threads
 # 4. if batch_size <= max_batch_size then ok use batch_size else batch_size=max_batch_size/2
 #
+#VARCO_SPLIT_MAP_batch_size=8 # for testing purpose
+echo "$(date '+%Y_%m_%d %R') [Override user config: batch_size] Testing if override batch_size user defined config parameter value is needed ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+MAX_BATCH_SIZE=$[ $MAX_NUMB_CORES_ALLOWED/$VARCO_GSNAP_t ]
+echo -e "max_cores=$MAX_NUMB_CORES" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "max_cores_allowed=$MAX_NUMB_CORES_ALLOWED" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "threads_by_sample=$VARCO_GSNAP_t" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "max_batch_size=$MAX_BATCH_SIZE" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "batch_size=$VARCO_SPLIT_MAP_batch_size" | tee -a $LOG_DIR/$LOGFILE 2>&1
+if [[ $VARCO_SPLIT_MAP_batch_size -le $MAX_BATCH_SIZE ]]; then
+	echo "$(date '+%Y_%m_%d %R') [Override user config: batch_size] No need to override batch_size user defined config parameter value." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %R') [Override user config: batch_size] Keep batch_size user defined config parameter value: $VARCO_SPLIT_MAP_batch_size" | tee -a $LOG_DIR/$LOGFILE 2>&1
+else
+	echo "$(date '+%Y_%m_%d %R') [Override user config: batch_size] Need to override batch_size user defined config parameter value." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	VARCO_SPLIT_MAP_batch_size=$[$MAX_BATCH_SIZE/2]
+	echo "$(date '+%Y_%m_%d %R') [Override user config: batch_size] Override batch_size user defined config parameter value: $VARCO_SPLIT_MAP_batch_size." | tee -a $LOG_DIR/$LOGFILE 2>&1
+fi
 
 #
 # Search for subdirectories with fastq files: TODO
@@ -249,18 +271,17 @@ fi
 #avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
 
 
-
-#
-# Quality control: TODO, fastqc and trimmomatic, optionnal step
-#
-
-
 #
 # Mapping: TODO
 #
 
+# create a directory named with JOB_TAG value, to save all outputs 
+
 # iterate over batches
 ## test for average cpu load
+## create an output directory for each sample
+## create Quality control and trimming subdir: fastqc and trimmomatic, optionnal step
+## create a mapping subdir for each sample
 ## map in parallel all samples in one batch
 ## test for disk space
 ## convert, sort and index
