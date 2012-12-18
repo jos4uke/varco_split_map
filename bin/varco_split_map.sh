@@ -29,9 +29,13 @@ PREFIX=$DEV_PREFIX # TO BE CHANGED WHEN SWITCHING TO PROD
 # Positionnement des variables
 
 ARGS=2
+DATA_ROOT_DIR=$1
+JOB_TAG=$2
+
 DATE=$(date '+%Y_%m_%d_%H_%M_%S')
-LOGFILE=$3_$DATE\_log.txt
 WORKING_DIR=$(pwd)
+LOGFILE=${JOB_TAG}_$DATE.log
+
 VARCO_SPLIT_MAP_SHARED=$PREFIX/share/$(basename ${0%.*})
 PROD_VARCO_SPLIT_MAP_USER_CONFIG=$WORKING_DIR/$(basename ${0%.*})_user.config
 DEV_VARCO_SPLIT_MAP_USER_CONFIG=$VARCO_SPLIT_MAP_SHARED/etc/$(basename ${0%.*})_user.config
@@ -114,18 +118,18 @@ User Configuration File: here is the main configuration sections and their corre
     - t (default=2)
     - D (default=/data/temp_projects/AZM/INDEX)
 
-   [samtools_view]
-     Please refer to samtools vew documentation: samtools view --help
-     - b (default=TRUE)
-     - S (default=TRUE)
+  [samtools_view]
+    Please refer to samtools vew documentation: samtools view --help
+    - b (default=TRUE)
+    - S (default=TRUE)
 
-   [samtools_sort]
-     Please refer to samtools vew documentation: samtools sort --help
-     No current options are available.
+  [samtools_sort]
+    Please refer to samtools vew documentation: samtools sort --help
+    No current options are available.
 
-   [samtools_index]
-      Please refer to samtools vew documentation: samtools index --help
-      No current options are available.
+  [samtools_index]
+    Please refer to samtools vew documentation: samtools index --help
+    No current options are available.
 
 Notes: 1. Current mapper is gsnap 
           $(gsnap --version 2>&1 | awk -F"\n" 'BEGIN{info=""}; {info=(info "\n\t" $1)}; END{printf info}')
@@ -137,4 +141,115 @@ Contact: Joseph.Tran@versailles.inra.fr
 
 ";
 exit 1; }
+
+#=======
+# BEGIN
+#=======
+
+# Create log directory
+
+if [[ -d $LOG_DIR ]]; then
+    echo "$(date '+%Y_%m_%d %r') [$(basename $0)] Start running the pipeline (version: $VERSION)." | tee $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %r') [$(basename $0)] Executed command: $0 $*" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %r') [Log directory] OK $LOG_DIR directory already exists. Will write log files in this directory." >> $LOG_DIR/$LOGFILE
+else
+    mkdir $LOG_DIR 2>$ERROR_TMP
+    if [[ $? -ne 0 ]]; then
+	echo "$(date '+%Y_%m_%d %r') [Log directory] Failed Log directory, $LOG_DIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %r') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %r') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	exit 126
+    else
+	echo "$(date '+%Y_%m_%d %r') [$(basename $0)] Start running the pipeline." | tee $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %r') [$(basename $0)] Executed command: $0 $*" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %r') [Log directory] OK $LOG_DIR directory was created sucessfully. Will write log files in this directory." >> $LOG_DIR/$LOGFILE	
+    fi
+fi
+
+#
+# Test for absence of user config file
+# if present ok continue else display warning message and exit
+#
+if [[ -s $VARCO_SPLIT_MAP_USER_CONFIG ]]; then
+#if [[ -s $WORKING_DIR/$(basename ${0%.*})_user.config ]]; then # for testing purpose
+    echo "$(date '+%Y_%m_%d %r') [Check config: user config file] OK User config file, $VARCO_SPLIT_MAP_USER_CONFIG, exists and is not empty." | tee -a $LOG_DIR/$LOGFILE 2>&1
+else
+    echo "$(date '+%Y_%m_%d %r') [Check config: user config file ] Failed User config file, $VARCO_SPLIT_MAP_USER_CONFIG, does not exist or is empty" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %r') [Check config: user config file ] Warning: " | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo -e "\t\t$PREREQUISITES_MSG" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %r') [Pipeline error] Exits the pipeline, with error code 3." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    exit 3
+fi
+
+#
+# Test for cpu average load: TODO
+# cf lib for a function to tell if average cpu load is ok else wait a minute
+
+
+#
+# Load config parameters: TODO
+# 
+# 
+
+#
+# Check for parameters validity: TODO
+# 1. check DATA_ROOT_DIR path existence
+# 2. cf lib implement a function to check for config parameters validity
+
+#
+# Override batch_size: TODO
+# 1. get the number of cores
+# 2. get the number of threads to use for gsnap
+# 3. compute max_batch_size=#cores/#threads
+# 4. if batch_size <= max_batch_size then ok use batch_size else batch_size=max_batch_size/2
+#
+
+#
+# Search for subdirectories with fastq files: TODO
+# 
+
+#
+# Test for disk space: TODO
+# do it after loading config parameters to evaluate the used disk space for raw data (all subdirs with fastq files) 
+# if available disk space lower than raw data used disk space, then abort
+#echo "$(date '+%Y_%m_%d %r') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
+#avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
+
+
+
+#
+# Quality control: TODO, fastqc and trimmomatic, optionnal step
+#
+
+
+#
+# Mapping: TODO
+#
+
+# iterate over batches
+## test for average cpu load
+## map in parallel all samples in one batch
+## test for disk space
+## convert, sort and index
+## if clean true, clean each sample subdir
+
+
+
+#
+# Clean: TODO
+#
+
+# unset environment variables with used namespace
+
+#=====
+# END
+#=====
+echo "$(date '+%Y_%m_%d %r') [$(basename $0)] Executed command: $0 $*" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -n "$(date '+%Y_%m_%d %r') [$(basename $0)] Elapsed time: " | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo |awk -v time="$SECONDS" '{print strftime("%Hh:%Mm:%Ss", time, 1)}' | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo "$(date '+%Y_%m_%d %r') [$(basename $0)] Exits the pipeline." | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo "$(date '+%Y_%m_%d %r') [$(basename $0)] More information about the analysis can be found in $LOG_DIR/$LOGFILE" | tee -a $LOG_DIR/$LOGFILE 2>&1
+
+#exit 0
+
 
