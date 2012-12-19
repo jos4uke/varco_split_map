@@ -260,7 +260,7 @@ else
 fi
 
 #
-# Search for subdirectories with fastq files: TODO
+# Search for subdirectories with fastq files:
 # 1. list all available subdirs in data root dir
 # 2. Filter subdirs with include pattern(s)
 # 3. Filter subdirs with exclude pattern(s)
@@ -308,12 +308,53 @@ echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Filtering subdirs for fastq files .
 fastq_forward_pattern="*_1_*.fastq"
 fastq_reverse_pattern="*_2_*.fastq"
 fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
-	fastq_forward=$(find "$subdir" -maxdepth 1 -name "$fastq_forward_pattern")
-	fastq_reverse=$(find "$subdir" -maxdepth 1 -name "$fastq_reverse_pattern")
-	[[ -n $fastq_forward && -n $fastq_reverse ]] && echo -e "$subdir"
-	done))
-echo -e "fastq subdirectories count: ${#fastq_subdirs[@]}"
-echo -e "fastq subdirectories list: ${fastq_subdirs[@]}"
+	fastq_files=($(ls "$subdir" | egrep -v "_single_" | egrep ".*.fastq$"))
+	if [[ "${#fastq_files[@]}" == 2 ]]; then
+	    echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] INFO $subdir has 2, non '_single_', fastq files." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
+            # get the pair if possible
+	    # else warn and discard the subdir
+	    sample_name_1=$(echo "${fastq_files[0]}" | gawk '
+	    function getSampleName(str) {
+              sample="";
+              while(match(str, /^(.*_[0-9])_[1-2]_(.*).fastq$/, a)) 
+              {
+                sample=a[1]"_"a[2];
+                str = substr(str, RSTART+RLENGTH)
+              }
+              print sample;
+            }
+            {
+              getSampleName($0)
+            }' 
+	    )
+	    sample_name_2=$(echo "${fastq_files[1]}" | gawk '
+	    function getSampleName(str) {
+              sample="";
+              while(match(str, /^(.*_[0-9])_[1-2]_(.*).fastq$/, a)) 
+              {
+                sample=a[1]"_"a[2];
+                str = substr(str, RSTART+RLENGTH)
+              }
+              print sample;
+            }
+            {
+              getSampleName($0)
+            }' 
+	    )
+	    echo -e "$(date '+%Y_%m_%d %R') [Fastq subdirs] INFO $subdir, sample_name: forward=$sample_name_1 == reverse=$sample_name_2" 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
+	    [[ $sample_name_1 == $sample_name_2 ]] && echo -e "$subdir"
+	elif [[ "${#fastq_files[@]}" < 2 ]]; then
+	    echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Warning: $subdir has less than 2, non '_single_', fastq files." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
+	    echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Warning: $subdir will not be considered because non '_single_' fastq files are missing." 1>&2| tee -a $LOG_DIR/$LOGFILE 1>&2
+	elif [[ "${#fastq_files[@]}" > 2 ]]; then
+	    # not satisfying
+	    echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Warning: $subdir has more than 2, non '_single_', fastq files." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
+	    echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Warning: You need to leave in $subdir only the 2 forward (_1_) and reverse (_2_) fastq files. '_single_' fastq files are ignored." 1>&2| tee -a $LOG_DIR/$LOGFILE 1>&2
+	    echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Warning: $subdir will not be considered, ambiguous fastq files list." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
+	fi
+	done 2>>$LOG_DIR/$LOGFILE))
+echo -e "fastq subdirectories count: ${#fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
+echo -e "fastq subdirectories list: ${fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
 
 #
 # Test for disk space: TODO
@@ -324,7 +365,7 @@ echo -e "fastq subdirectories list: ${fastq_subdirs[@]}"
 
 
 #
-# Mapping: TODO
+# Batch mode: TODO
 #
 
 # create a directory named with JOB_TAG value, to save all outputs 
