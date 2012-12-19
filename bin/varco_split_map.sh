@@ -269,9 +269,13 @@ fi
 # 1. list all available subdirs in data root dir
 echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Searching for fastq sample subdirs ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 all_subdirs=($(find $DATA_ROOT_DIR -maxdepth 1 -type d | egrep -v ^$DATA_ROOT_DIR$ 2>$ERROR_TMP))
+if [[ -s $ERROR_TMP ]]; then 
+    echo "$(date '+%Y_%m_%d %R') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1; 
+    exit 1
+fi
 #read -a all_subdirs_arr echo <<< $(echo -e $all_subdirs | tr " " "\n")
-echo -e "all subdirectories count: ${#all_subdirs[@]}"
-echo -e "all subdirectories list: ${all_subdirs[@]}"
+echo -e "all subdirectories count: ${#all_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "all subdirectories list: ${all_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 # 2. Filter subdirs with include pattern(s)
 echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Filtering subdirs with include pattern(s) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -279,11 +283,11 @@ echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Filtering subdirs with include patt
 include_patterns=$(echo ${VARCO_DATA_include_sample_subdirs//,/|})
 echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] include_patterns=($include_patterns) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 inc_subdirs=($(for subdir in "${all_subdirs[@]}"; do
-    res=$(echo $(basename $subdir) | egrep "($include_patterns)")
+    res=$(echo $(basename $subdir) | egrep "($include_patterns)" 2>>$LOG_DIR/$LOGFILE)
     [[ -n $res ]] && echo -e "$subdir" 
-done))
-echo -e "include pattern(s) subdirectories count: ${#inc_subdirs[@]}"
-echo -e "include pattern(s) subdirectories list: ${inc_subdirs[@]}"
+done 2>>$LOG_DIR/$LOGFILE))
+echo -e "include pattern(s) subdirectories count: ${#inc_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "include pattern(s) subdirectories list: ${inc_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 # 3. Filter subdirs with exclude pattern(s)
 echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Filtering subdirs with exclude pattern(s) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -293,15 +297,15 @@ if [[ -n $VARCO_DATA_exclude_sample_subdirs ]]; then
     exclude_patterns=$(echo ${VARCO_DATA_exclude_sample_subdirs//,/|})
     echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] exclude_patterns=($exclude_patterns) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
     subdirs=($(for subdir in "${inc_subdirs[@]}"; do
-	    res=$(echo $(basename $subdir) | egrep -v "($exclude_patterns)")
+	    res=$(echo $(basename $subdir) | egrep -v "($exclude_patterns)" 2>>$LOG_DIR/$LOGFILE)
 	    [[ -n $res ]] && echo -e "$subdir" 
-	    done))
+	    done 2>>$LOG_DIR/$LOGFILE))
 else
     echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] No exclude patterns." | tee -a $LOG_DIR/$LOGFILE 2>&1
     subdirs=("${inc_subdirs[@]}")
 fi
-echo -e "include pattern(s) subdirectories count: ${#subdirs[@]}"
-echo -e "include pattern(s) subdirectories list: ${subdirs[@]}"
+echo -e "include pattern(s) subdirectories count: ${#subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
+echo -e "include pattern(s) subdirectories list: ${subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
 
 # 4. Filter subdirs for fastq files
 echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Filtering subdirs for fastq files ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -325,7 +329,7 @@ fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
             }
             {
               getSampleName($0)
-            }' 
+            }' 2>>$LOG_DIR/$LOGFILE
 	    )
 	    sample_name_2=$(echo "${fastq_files[1]}" | gawk '
 	    function getSampleName(str) {
@@ -338,8 +342,8 @@ fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
               print sample;
             }
             {
-              getSampleName($0)
-            }' 
+              getSampleName($0) 
+            }' 2>>$LOG_DIR/$LOGFILE
 	    )
 	    echo -e "$(date '+%Y_%m_%d %R') [Fastq subdirs] INFO $subdir, sample_name: forward=$sample_name_1 == reverse=$sample_name_2" 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
 	    [[ $sample_name_1 == $sample_name_2 ]] && echo -e "$subdir"
@@ -353,8 +357,8 @@ fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
 	    echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Warning: $subdir will not be considered, ambiguous fastq files list." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
 	fi
 	done 2>>$LOG_DIR/$LOGFILE))
-echo -e "fastq subdirectories count: ${#fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
-echo -e "fastq subdirectories list: ${fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
+echo -e "fastq subdirectories count: ${#fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "fastq subdirectories list: ${fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 #
 # Test for disk space: TODO
