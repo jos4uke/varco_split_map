@@ -291,6 +291,7 @@ echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Filtering subdirs with exclude patt
 #VARCO_DATA_exclude_sample_subdirs="" # for testing purpose
 if [[ -n $VARCO_DATA_exclude_sample_subdirs ]]; then
     exclude_patterns=$(echo ${VARCO_DATA_exclude_sample_subdirs//,/|})
+    echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] exclude_patterns=($exclude_patterns) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
     subdirs=($(for subdir in "${inc_subdirs[@]}"; do
 	    res=$(echo $(basename $subdir) | egrep -v "($exclude_patterns)")
 	    [[ -n $res ]] && echo -e "$subdir" 
