@@ -261,7 +261,58 @@ fi
 
 #
 # Search for subdirectories with fastq files: TODO
-# 
+# 1. list all available subdirs in data root dir
+# 2. Filter subdirs with include pattern(s)
+# 3. Filter subdirs with exclude pattern(s)
+# 4. Filter subdirs for fastq files
+
+# 1. list all available subdirs in data root dir
+echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Searching for fastq sample subdirs ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+all_subdirs=($(find $DATA_ROOT_DIR -maxdepth 1 -type d | egrep -v ^$DATA_ROOT_DIR$ 2>$ERROR_TMP))
+#read -a all_subdirs_arr echo <<< $(echo -e $all_subdirs | tr " " "\n")
+echo -e "all subdirectories count: ${#all_subdirs[@]}"
+echo -e "all subdirectories list: ${all_subdirs[@]}"
+
+# 2. Filter subdirs with include pattern(s)
+echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Filtering subdirs with include pattern(s) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#VARCO_DATA_include_sample_subdirs="^D.*,XA,XC" # for testing purpose
+include_patterns=$(echo ${VARCO_DATA_include_sample_subdirs//,/|})
+echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] include_patterns=($include_patterns) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+inc_subdirs=($(for subdir in "${all_subdirs[@]}"; do
+    res=$(echo $(basename $subdir) | egrep "($include_patterns)")
+    [[ -n $res ]] && echo -e "$subdir" 
+done))
+echo -e "include pattern(s) subdirectories count: ${#inc_subdirs[@]}"
+echo -e "include pattern(s) subdirectories list: ${inc_subdirs[@]}"
+
+# 3. Filter subdirs with exclude pattern(s)
+echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Filtering subdirs with exclude pattern(s) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#VARCO_DATA_exclude_sample_subdirs="^X.*,DA,DI" # for testing purpose
+#VARCO_DATA_exclude_sample_subdirs="" # for testing purpose
+if [[ -n $VARCO_DATA_exclude_sample_subdirs ]]; then
+    exclude_patterns=$(echo ${VARCO_DATA_exclude_sample_subdirs//,/|})
+    subdirs=($(for subdir in "${inc_subdirs[@]}"; do
+	    res=$(echo $(basename $subdir) | egrep -v "($exclude_patterns)")
+	    [[ -n $res ]] && echo -e "$subdir" 
+	    done))
+else
+    echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] No exclude patterns." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    subdirs=("${inc_subdirs[@]}")
+fi
+echo -e "include pattern(s) subdirectories count: ${#subdirs[@]}"
+echo -e "include pattern(s) subdirectories list: ${subdirs[@]}"
+
+# 4. Filter subdirs for fastq files
+echo "$(date '+%Y_%m_%d %R') [Fastq subdirs] Filtering subdirs for fastq files ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+fastq_forward_pattern="*_1_*.fastq"
+fastq_reverse_pattern="*_2_*.fastq"
+fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
+	fastq_forward=$(find "$subdir" -maxdepth 1 -name "$fastq_forward_pattern")
+	fastq_reverse=$(find "$subdir" -maxdepth 1 -name "$fastq_reverse_pattern")
+	[[ -n $fastq_forward && -n $fastq_reverse ]] && echo -e "$subdir"
+	done))
+echo -e "fastq subdirectories count: ${#fastq_subdirs[@]}"
+echo -e "fastq subdirectories list: ${fastq_subdirs[@]}"
 
 #
 # Test for disk space: TODO
