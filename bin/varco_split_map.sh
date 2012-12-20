@@ -34,19 +34,20 @@ JOB_TAG=$2
 
 DATE=$(date '+%Y_%m_%d_%H_%M_%S')
 WORKING_DIR=$(pwd)
-LOGFILE=${JOB_TAG}_$DATE.log
+LOGFILE=${JOB_TAG}_${USER}_$DATE.log
 
 NAMESPACE="VARCO"
 VARCO_SPLIT_MAP_SHARED=$PREFIX/share/$(basename ${0%.*})
 PROD_VARCO_SPLIT_MAP_USER_CONFIG=$WORKING_DIR/$(basename ${0%.*})_user.config
 DEV_VARCO_SPLIT_MAP_USER_CONFIG=$VARCO_SPLIT_MAP_SHARED/etc/$(basename ${0%.*})_user.config
 VARCO_SPLIT_MAP_USER_CONFIG=$DEV_VARCO_SPLIT_MAP_USER_CONFIG # TO BE CHANGED WHEN SWITCHING TO PROD
+JOB_VARCO_SPLIT_MAP_USER_CONFIG=$JOB_TAG/${JOB_TAG}_$(basename ${0%.*})_user.config
 
 MAX_NUMB_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 MAX_NUMB_CORES_ALLOWED=$[$MAX_NUMB_CORES/2]
 MAX_BATCH_SIZE=0
 
-LOG_DIR="log"
+LOG_DIR=$JOB_TAG/"log"
 TRIMMING_DIR="01_Trimming"
 MAPPING_DIR="02_Mapping"
 
@@ -73,7 +74,7 @@ TODO: add license copyright 2012
 Usage: $(basename $0) samples_root_dir job_tag
 
 Arguments: samples_root_dir Path to the parent folder containing the reads samples subdirectories 
-           job_tag          Prefix to attach to any output files       
+           job_tag          <String> Prefix to attach to any output files (without space)
 
 Description: This script performs reads mapping in batch mode by splitting
              given samples in several batches and run sequentially each batch 
@@ -153,6 +154,23 @@ exit 1; }
 # BEGIN
 #=======
 
+#
+# Create a directory named with JOB_TAG value, to save all outputs 
+#
+if [[ -d $JOB_TAG ]]; then
+    echo "$(date '+%Y_%m_%d %R') [Job directory] OK $JOB_TAG directory already exists. Will output all job files in this directory." | tee -a $LOG_DIR/$LOGFILE
+else
+    mkdir $JOB_TAG 2>$ERROR_TMP
+    if [[ $? -ne 0 ]]; then
+	echo "$(date '+%Y_%m_%d %R') [Job directory] Failed Job directory, $JOB_TAG, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %R') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %R') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	exit 126
+    else
+    echo "$(date '+%Y_%m_%d %R') [Job directory] OK $JOB_TAG directory already exists. Will output all job files in this directory." | tee -a $LOG_DIR/$LOGFILE
+    fi
+fi
+
 # Create log directory
 
 if [[ -d $LOG_DIR ]]; then
@@ -205,26 +223,34 @@ else
 fi
 
 #
-# Load config parameters
-# 
-echo "$(date '+%Y_%m_%d %R') [Check config: user config file] Loading user config parameters from $VARCO_SPLIT_MAP_USER_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
-for cfg in $(get_config_sections $VARCO_SPLIT_MAP_USER_CONFIG 2>$ERROR_TMP; rtrn=$?); do
+# Copy user config parameters file into job directory: TODO
+# 1. Copy user config parameters file, prefixing it with the job tag
+# 2. Then load config parameters from that new file, leaving the user config file in the working directory for some new job
+
+# 1. Copy user config file 
+echo "$(date '+%Y_%m_%d %R') [Check config: job user config file] Copying user config file into job directory ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+cp $VARCO_SPLIT_MAP_USER_CONFIG $JOB_VARCO_SPLIT_MAP_USER_CONFIG 
+echo "$(date '+%Y_%m_%d %R') [Check config: job user config file] Will use copied job user config file: $JOB_VARCO_SPLIT_MAP_USER_CONFIG" | tee -a $LOG_DIR/$LOGFILE 2>&1
+
+# 2. Load config parameters from job user config file
+echo "$(date '+%Y_%m_%d %R') [Check config: job user config file] Loading job user config parameters from $JOB_VARCO_SPLIT_MAP_USER_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+for cfg in $(get_config_sections $JOB_VARCO_SPLIT_MAP_USER_CONFIG 2>$ERROR_TMP; rtrn=$?); do
     echo -e "--- Config section [${cfg}] ---"
     unset $(set | awk -F= -v cfg="${cfg}" -v prefix="${NAMESPACE}" 'BEGIN { 
           cfg = toupper(cfg);
           prefix = toupper(prefix);
        }
        /^prefix_cfg_/  { print $1 }') $(toupper ${NAMESPACE}_${cfg}_)
-    set_config_params $VARCO_SPLIT_MAP_USER_CONFIG ${cfg} ${NAMESPACE} 2>$ERROR_TMP
+    set_config_params $JOB_VARCO_SPLIT_MAP_USER_CONFIG ${cfg} ${NAMESPACE} 2>$ERROR_TMP
     rtrn=$?
     for params in $(set | grep ^$(toupper ${NAMESPACE}_${cfg}_) 2>$ERROR_TMP); do
 	echo -e "$params"
     done
 done
 if [[ ! -s $ERROR_TMP ]]; then
-    echo "$(date '+%Y_%m_%d %R') [Check config: user config file] OK User config file, $VARCO_SPLIT_MAP_USER_CONFIG, was loaded successfully." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %R') [Check config: job user config file] OK User config file, $JOB_VARCO_SPLIT_MAP_USER_CONFIG, was loaded successfully." | tee -a $LOG_DIR/$LOGFILE 2>&1
 else
-    echo "$(date '+%Y_%m_%d %R') [Check config: user config file ] Failed loading user config file, $VARCO_SPLIT_MAP_USER_CONFIG" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %R') [Check config: job user config file ] Failed loading user config file, $JOB_VARCO_SPLIT_MAP_USER_CONFIG" | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo "$(date '+%Y_%m_%d %R') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo "$(date '+%Y_%m_%d %R') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
     exit $rtrn
@@ -369,10 +395,8 @@ echo -e "fastq subdirectories list: ${fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGF
 
 
 #
-# Batch mode: TODO
-#
-
-# create a directory named with JOB_TAG value, to save all outputs 
+# Batch mode:
+# 1. Iterate over batches
 
 # iterate over batches
 ## test for average cpu load
@@ -383,6 +407,28 @@ echo -e "fastq subdirectories list: ${fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGF
 ## test for disk space
 ## convert, sort and index
 ## if clean true, clean each sample subdir
+
+# 1. Iterate over batches
+for b in $(seq 1 $[ ${#fastq_subdirs[@]}/$VARCO_SPLIT_MAP_batch_size ]); do
+    echo $b
+done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
