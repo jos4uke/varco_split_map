@@ -116,7 +116,37 @@ set_config_params()
     fi
 }
 
+#-------------------------------------------------------------------------
+# Function : waitall $pids_array
+# Purpose  : wait for all child processes to finish and log their exit status
+waitall() {
+  ## Wait for children to exit and indicate whether all exited with 0 status.
+  local errors=0
+  while :; do
+    debug "Processes remaining: $*"
+    for pid in "$@"; do
+      shift
+      if kill -0 "$pid" 2>/dev/null; then
+        debug "$pid is still alive."
+        set -- "$@" "$pid"
+      elif wait "$pid"; then
+        debug "$pid exited with zero exit status."
+      else
+        debug "$pid exited with non-zero exit status."
+        ((++errors))
+      fi
+    done
+    (("$#" > 0)) || break
+    # TODO: how to interrupt this sleep when a child terminates?
+    sleep ${WAITALL_DELAY:-1}
+   done
+  ((errors == 0))
+}
 
+#-------------------------------------------------------------------------
+# Function : but $message_string
+# Purpose  : print a debug message to the standard error
+debug() { echo "DEBUG: $*" >&2; }
 
 
 
