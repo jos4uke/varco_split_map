@@ -154,39 +154,42 @@ exit 1; }
 # BEGIN
 #=======
 
+echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Start running the pipeline (version: $VERSION)." | tee $ERROR_TMP 2>&1
+echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Executed command: $0 $*" | tee -a $ERROR_TMP 2>&1
+
 #
 # Create a directory named with JOB_TAG value, to save all outputs 
 #
+echo "$(date '+%Y_%m_%d %T') [Job directory] Creating $JOB_TAG directory ..." | tee -a $ERROR_TMP 2>&1
 if [[ -d $JOB_TAG ]]; then
-    echo "$(date '+%Y_%m_%d %T') [Job directory] OK $JOB_TAG directory already exists. Will output all job files in this directory." | tee -a $LOG_DIR/$LOGFILE
+    echo "$(date '+%Y_%m_%d %T') [Job directory] OK $JOB_TAG directory already exists. Will output all job files in this directory." | tee -a $ERROR_TMP 2>&1
 else
-    mkdir $JOB_TAG 2>$ERROR_TMP
+    mkdir $JOB_TAG 2>>$ERROR_TMP
     if [[ $? -ne 0 ]]; then
-	echo "$(date '+%Y_%m_%d %T') [Job directory] Failed Job directory, $JOB_TAG, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %T') [Job directory] Failed Job directory, $JOB_TAG, was not created." | tee -a $ERROR_TMP 2>&1
+	echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1
+	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." 2>&1
 	exit 126
     else
-	echo "$(date '+%Y_%m_%d %T') [Job directory] OK $JOB_TAG directory was created successfully. Will output all job files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %T') [Job directory] OK $JOB_TAG directory was created successfully. Will output all job files in this directory." | tee -a $ERROR_TMP 2>&1
     fi
 fi
 
 # Create log directory
-
+echo "$(date '+%Y_%m_%d %T') [Log directory] Creating $LOG_DIR directory ..." | tee -a $ERROR_TMP 2>&1
 if [[ -d $LOG_DIR ]]; then
-    echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Start running the pipeline (version: $VERSION)." | tee $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Executed command: $0 $*" | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Log directory] OK $LOG_DIR directory already exists. Will write log files in this directory." >> $LOG_DIR/$LOGFILE
+    [[ -s $ERROR_TMP ]] && cat $ERROR_TMP > $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Log directory] OK $LOG_DIR directory already exists. Will write log files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 else
-    mkdir $LOG_DIR 2>$ERROR_TMP
+    mkdir $LOG_DIR 2>>$ERROR_TMP
     if [[ $? -ne 0 ]]; then
+	cat $ERROR_TMP > $LOG_DIR/$LOGFILE 2>&1
 	echo "$(date '+%Y_%m_%d %T') [Log directory] Failed Log directory, $LOG_DIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 	echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
 	exit 126
-    else
-	echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Start running the pipeline." | tee $LOG_DIR/$LOGFILE 2>&1
-	echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Executed command: $0 $*" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    else    
+	[[ -s $ERROR_TMP ]] && cat $ERROR_TMP > $LOG_DIR/$LOGFILE 2>&1
 	echo "$(date '+%Y_%m_%d %T') [Log directory] OK $LOG_DIR directory was created sucessfully. Will write log files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1	
     fi
 fi
@@ -198,10 +201,11 @@ fi
 #
 # Check for DATA_ROOT_DIR existence
 #
+echo "$(date '+%Y_%m_%d %T') [Data root directory] Checking $DATA_ROOT_DIR directory ..." | tee -a $ERROR_TMP 2>&1
 if [[ -d $DATA_ROOT_DIR ]]; then
-    echo "$(date '+%Y_%m_%d %T') [$(basename $0)] $DATA_ROOT_DIR exists and is a directory." | tee $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Data root directory] $DATA_ROOT_DIR exists and is a directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 else
-    echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Failed $DATA_ROOT_DIR does not exist or is not a directory." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Data root directory] Failed $DATA_ROOT_DIR does not exist or is not a directory." | tee $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
     exit 1
@@ -211,19 +215,20 @@ fi
 # Test for absence of user config file
 # if present ok continue else display warning message and exit
 #
+echo "$(date '+%Y_%m_%d %T') [Check config: user config file] Checking for $VARCO_SPLIT_MAP_USER_CONFIG user config file ..." | tee -a $ERROR_TMP 2>&1
 if [[ -s $VARCO_SPLIT_MAP_USER_CONFIG ]]; then
 #if [[ -s $WORKING_DIR/$(basename ${0%.*})_user.config ]]; then # for testing purpose
     echo "$(date '+%Y_%m_%d %T') [Check config: user config file] OK User config file, $VARCO_SPLIT_MAP_USER_CONFIG, exists and is not empty." | tee -a $LOG_DIR/$LOGFILE 2>&1
 else
-    echo "$(date '+%Y_%m_%d %T') [Check config: user config file ] Failed User config file, $VARCO_SPLIT_MAP_USER_CONFIG, does not exist or is empty" | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Check config: user config file ] Warning: " | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Check config: user config file] Failed User config file, $VARCO_SPLIT_MAP_USER_CONFIG, does not exist or is empty" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Check config: user config file] Warning: " | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo -e "\t\t$PREREQUISITES_MSG" | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 3." | tee -a $LOG_DIR/$LOGFILE 2>&1
     exit 3
 fi
 
 #
-# Copy user config parameters file into job directory: TODO
+# Copy user config parameters file into job directory
 # 1. Copy user config parameters file, prefixing it with the job tag
 # 2. Then load config parameters from that new file, leaving the user config file in the working directory for some new job
 
@@ -240,17 +245,17 @@ for cfg in $(get_config_sections $JOB_VARCO_SPLIT_MAP_USER_CONFIG 2>$ERROR_TMP; 
           cfg = toupper(cfg);
           prefix = toupper(prefix);
        }
-       /^prefix_cfg_/  { print $1 }') $(toupper ${NAMESPACE}_${cfg}_)
-    set_config_params $JOB_VARCO_SPLIT_MAP_USER_CONFIG ${cfg} ${NAMESPACE} 2>$ERROR_TMP
+       /^prefix_cfg_/  { print $1 }' 2>>$ERROR_TMP) $(toupper ${NAMESPACE}_${cfg}_) 2>>$ERROR_TMP
+    set_config_params $JOB_VARCO_SPLIT_MAP_USER_CONFIG ${cfg} ${NAMESPACE} 2>>$ERROR_TMP
     rtrn=$?
-    for params in $(set | grep ^$(toupper ${NAMESPACE}_${cfg}_) 2>$ERROR_TMP); do
+    for params in $(set | grep ^$(toupper ${NAMESPACE}_${cfg}_) 2>>$ERROR_TMP); do
 	echo -e "$params"
     done
 done
 if [[ ! -s $ERROR_TMP ]]; then
     echo "$(date '+%Y_%m_%d %T') [Check config: job user config file] OK User config file, $JOB_VARCO_SPLIT_MAP_USER_CONFIG, was loaded successfully." | tee -a $LOG_DIR/$LOGFILE 2>&1
 else
-    echo "$(date '+%Y_%m_%d %T') [Check config: job user config file ] Failed loading user config file, $JOB_VARCO_SPLIT_MAP_USER_CONFIG" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Check config: job user config file] Failed loading user config file, $JOB_VARCO_SPLIT_MAP_USER_CONFIG" | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
     exit $rtrn
@@ -263,8 +268,8 @@ fi
 
 #
 # Override  defined batch_size:
-# 1. get the number of cores
-# 2. get the number of threads to use for gsnap
+# 1. get the total number of cores
+# 2. get the number of threads to use for the mapper
 # 3. compute max_batch_size=#max_cores_allowed/#threads
 # 4. if batch_size <= max_batch_size then ok use batch_size else batch_size=max_batch_size/2
 #
@@ -287,7 +292,7 @@ fi
 
 #
 # Search for subdirectories with fastq files:
-# 1. list all available subdirs in data root dir
+# 1. List all available subdirs in data root dir
 # 2. Filter subdirs with include pattern(s)
 # 3. Filter subdirs with exclude pattern(s)
 # 4. Filter subdirs for fastq files
@@ -309,11 +314,19 @@ echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Filtering subdirs with include patt
 include_patterns=$(echo ${VARCO_DATA_include_sample_subdirs//,/|})
 echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] include_patterns=($include_patterns) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 inc_subdirs=($(for subdir in "${all_subdirs[@]}"; do
-    res=$(echo $(basename $subdir) | egrep "($include_patterns)" 2>>$LOG_DIR/$LOGFILE)
+    res=$(echo $(basename $subdir) | egrep "($include_patterns)" 2>$ERROR_TMP)
+    rtrn=$?
     [[ -n $res ]] && echo -e "$subdir" 
-done 2>>$LOG_DIR/$LOGFILE))
-echo -e "include pattern(s) subdirectories count: ${#inc_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
-echo -e "include pattern(s) subdirectories list: ${inc_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+done 2>>$ERROR_TMP))
+if [[ -s $ERROR_TMP ]]; then
+        echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Failed An error occured while filtering for subdirs to include." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    exit $rtrn
+else
+    echo -e "include pattern(s) subdirectories count: ${#inc_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo -e "include pattern(s) subdirectories list: ${inc_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+fi
 
 # 3. Filter subdirs with exclude pattern(s)
 echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Filtering subdirs with exclude pattern(s) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -323,22 +336,30 @@ if [[ -n $VARCO_DATA_exclude_sample_subdirs ]]; then
     exclude_patterns=$(echo ${VARCO_DATA_exclude_sample_subdirs//,/|})
     echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] exclude_patterns=($exclude_patterns) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
     subdirs=($(for subdir in "${inc_subdirs[@]}"; do
-	    res=$(echo $(basename $subdir) | egrep -v "($exclude_patterns)" 2>>$LOG_DIR/$LOGFILE)
+	    res=$(echo $(basename $subdir) | egrep -v "($exclude_patterns)" 2>$ERROR_TMP)
+	    rtrn=$?
 	    [[ -n $res ]] && echo -e "$subdir" 
-	    done 2>>$LOG_DIR/$LOGFILE))
+	    done 2>>$ERROR_TMP))
 else
     echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] No exclude patterns." | tee -a $LOG_DIR/$LOGFILE 2>&1
     subdirs=("${inc_subdirs[@]}")
 fi
-echo -e "include pattern(s) subdirectories count: ${#subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
-echo -e "include pattern(s) subdirectories list: ${subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
+if [[ -s $ERROR_TMP ]]; then
+    echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Failed An error occured while filtering for subdirs to exclude." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    exit $rtrn
+else
+    echo -e "include pattern(s) subdirectories count: ${#subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
+    echo -e "include pattern(s) subdirectories list: ${subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
+fi
 
 # 4. Filter subdirs for fastq files
 echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Filtering subdirs for fastq files ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 fastq_forward_pattern="*_1_*.fastq"
 fastq_reverse_pattern="*_2_*.fastq"
 fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
-	fastq_files=($(ls "$subdir" | egrep -v "_single_" | egrep ".*.fastq$"))
+	fastq_files=($(ls "$subdir" | egrep -v "_single_" | egrep ".*.fastq$" 2>$ERROR_TMP))
 	if [[ "${#fastq_files[@]}" == 2 ]]; then
 	    echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] INFO $subdir has 2, non '_single_', fastq files." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
             # get the pair if possible
@@ -355,7 +376,7 @@ fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
             }
             {
               getSampleName($0)
-            }' 2>>$LOG_DIR/$LOGFILE
+            }' 2>>$ERROR_TMP
 	    )
 	    sample_name_2=$(echo "${fastq_files[1]}" | gawk '
 	    function getSampleName(str) {
@@ -369,10 +390,16 @@ fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
             }
             {
               getSampleName($0) 
-            }' 2>>$LOG_DIR/$LOGFILE
+            }' 2>>$ERROR_TMP
 	    )
-	    echo -e "$(date '+%Y_%m_%d %T') [Fastq subdirs] INFO $subdir, sample_name: forward=$sample_name_1 == reverse=$sample_name_2" 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2 
-	    [[ $sample_name_1 == $sample_name_2 ]] && echo -e "$subdir" # todo: rewrite condition to warn user that sample name are different between forward and reverse fastq files
+	    
+	    if [[ $sample_name_1 == $sample_name_2 ]]; then
+		echo -e "$(date '+%Y_%m_%d %T') [Fastq subdirs] INFO $subdir, same fastq sample name: forward=$sample_name_1 == reverse=$sample_name_2" 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2 
+		echo -e "$subdir" 
+	    else
+		echo -e "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning $subdir, different fastq sample name: forward=$sample_name_1 != reverse=$sample_name_2" 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
+		echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning: $subdir will not be considered because fastq sample name are different." 1>&2| tee -a $LOG_DIR/$LOGFILE 1>&2
+	    fi
 	elif [[ "${#fastq_files[@]}" < 2 ]]; then
 	    echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning: $subdir has less than 2, non '_single_', fastq files." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
 	    echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning: $subdir will not be considered because non '_single_' fastq files are missing." 1>&2| tee -a $LOG_DIR/$LOGFILE 1>&2
@@ -383,8 +410,21 @@ fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
 	    echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning: $subdir will not be considered, ambiguous fastq files list." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
 	fi
 	done 2>>$LOG_DIR/$LOGFILE))
-echo -e "fastq subdirectories count: ${#fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
-echo -e "fastq subdirectories list: ${fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+rtrn=$?
+if [[ -s $ERROR_TMP ]]; then
+        echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Failed An error occured while filtering for subdirs with fastq files." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    exit $rtrn
+else
+    echo -e "fastq subdirectories count: ${#fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo -e "fastq subdirectories list: ${fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    if [[ "${#fastq_subdirs[@]}" -ne "${#subdirs[@]}" ]]; then
+	echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning Some subdirectories was discarded because fastq files checking has detected divergent forward/reverse sample name or an unexpected fastq files count." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning More information about discarded subdirectories can be found in $LOG_DIR/$LOGFILE" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    fi
+fi
+
 
 #
 # Test for disk space: TODO
@@ -584,7 +624,7 @@ echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Executed command: $0 $*" | tee -a 
 echo -n "$(date '+%Y_%m_%d %T') [$(basename $0)] Elapsed time: " | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo |awk -v time="$SECONDS" '{print strftime("%Hh:%Mm:%Ss", time, 1)}' | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Exits the pipeline." | tee -a $LOG_DIR/$LOGFILE 2>&1
-echo "$(date '+%Y_%m_%d %T') [$(basename $0)] More information about the this job can be found in $LOG_DIR/$LOGFILE" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo "$(date '+%Y_%m_%d %T') [$(basename $0)] More information about this job can be found in $LOG_DIR/$LOGFILE" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 #exit 0
 
