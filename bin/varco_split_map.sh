@@ -475,37 +475,38 @@ for b in $(seq 0 $[ (${#subdirs[@]}/$VARCO_SPLIT_MAP_batch_size)-1 ]); do
         # 1.3 create an output directory for each sample
 	    echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating sample directory: $CURRENT_BATCH_SUBDIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	    if [[ -d $CURRENT_BATCH_SUBDIR ]]; then
-		echo "$(date '+%Y_%m_%d %T') [Sample output directory] OK $CURRENT_BATCH_SUBDIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 	    else
 		mkdir $CURRENT_BATCH_SUBDIR 2>$ERROR_TMP
 		if [[ $? -ne 0 ]]; then
-		    echo "$(date '+%Y_%m_%d %T') [Sample output directory] Failed Sample output directory, $CURRENT_BATCH_SUBDIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		    echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] Failed Sample output directory, $CURRENT_BATCH_SUBDIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
 		    exit 126
 		else
-		    echo "$(date '+%Y_%m_%d %T') [Sample output directory] OK $CURRENT_BATCH_SUBDIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		    echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 		fi
 	    fi
 	elif [[ "$s" -eq "${#subdirs[@]}" ]]; then
 	    last=TRUE
 	    echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating last batch sample directory: $CURRENT_BATCH_SUBDIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	    if [[ -d $CURRENT_BATCH_SUBDIR ]]; then
-		echo "$(date '+%Y_%m_%d %T') [Sample output directory] OK $CURRENT_BATCH_SUBDIR last batch directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR last batch directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 	    else
 		mkdir $CURRENT_BATCH_SUBDIR 2>$ERROR_TMP
 		if [[ $? -ne 0 ]]; then
-		    echo "$(date '+%Y_%m_%d %T') [Sample output directory] Failed Sample output directory, $CURRENT_BATCH_SUBDIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		    echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] Failed Sample output directory, $CURRENT_BATCH_SUBDIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
 		    exit 126
 		else
-		    echo "$(date '+%Y_%m_%d %T') [Sample output directory] OK $CURRENT_BATCH_SUBDIR last batch directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		    echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR last batch directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 		fi
 	    fi  
 	fi
 
 	# Get forward and reverse fastq files for current batch sample subdir
+	echo "$(date '+%Y_%m_%d %T') [Batch mode] Listing forward and reverse fastq files in ${subdirs[$si]} current batch sample directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 	fastq_files=($(ls "${subdirs[$si]}" | egrep -v "_single_" | egrep ".*.fastq$" 2>$ERROR_TMP))
 	echo -e "fastq files count: ${#fastq_files[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	echo -e "fastq files list: ${fastq_files[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -516,7 +517,7 @@ for b in $(seq 0 $[ (${#subdirs[@]}/$VARCO_SPLIT_MAP_batch_size)-1 ]); do
 	m=$(echo $f | egrep "_[0-9]+_2_" 2>>$ERROR_TMP); if [[ -n $m ]]; then echo $m; break; fi
 	done 2>>$ERROR_TMP)
 	if [[ -s $ERROR_TMP ]]; then
-		 echo "$(date '+%Y_%m_%d %T') [Batch mode] Failed An error occured while listing for forward and reverse fastq files in ${subdirs[$si]} batch sample directory." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		 echo "$(date '+%Y_%m_%d %T') [Batch mode] Failed An error occured while listing forward and reverse fastq files in ${subdirs[$si]} current batch sample directory." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline" | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1			
 	else
@@ -526,31 +527,32 @@ for b in $(seq 0 $[ (${#subdirs[@]}/$VARCO_SPLIT_MAP_batch_size)-1 ]); do
 
 
         # 1.4 Create Quality control and trimming sub-subdir: fastqc and trimmomatic, optional step
-	# if [[ $VARCO_QC_TRIM_process == "TRUE" ]]; then
-	#     echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating quality control and trimming sub-directory: $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
-	#     if [[ -d $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR ]]; then
-	# 	echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	#     else
-	# 	mkdir $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR 2>$ERROR_TMP
-	# 	if [[ $? -ne 0 ]]; then
-	# 	    echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] Failed Quality control and Trimming output directory, $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	# 	    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	# 	    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	# 	    exit 126
-	# 	else
-	# 	    echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	# 	fi
-	#     fi 
-        #     # 1.4.1 Quality control on raw data, before trimming
+	#VARCO_QC_TRIM_process=TRUE # for testing purpose	
+	if [[ $VARCO_QC_TRIM_process == "TRUE" ]]; then
+	     echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating quality control and trimming sub-directory: $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	     if [[ -d $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR ]]; then
+	 	echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	     else
+	 	mkdir $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR 2>$ERROR_TMP
+	 	if [[ $? -ne 0 ]]; then
+	 	    echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] Failed Quality control and Trimming output directory, $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	 	    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	 	    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	 	    exit 126
+	 	else
+	 	    echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	 	fi
+	     fi 
+             # 1.4.1 Quality control on raw data, before trimming
 
-	#     # 1.4.2 Trimming on raw data 
+	     # 1.4.2 Trimming on raw data 
 
-	#     # 1.4.3 Quality control on trimmed data, after trimming
+	     # 1.4.3 Quality control on trimmed data, after trimming
 	
-        #     # 1.4.4 Set forward and reverse fastq files for mapping step
-	#     forward_fastq=trimmed_forward_fastq
-	#     reverse_fastq=trimmed_reverse_fastq
-	# fi
+             # 1.4.4 Set forward and reverse fastq files for mapping step
+	     forward_fastq=trimmed_forward_fastq
+	     reverse_fastq=trimmed_reverse_fastq
+	 fi
 
         # 1.5 Create a mapping sub-subdir for each sample
 	# echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating mapping sub-directory: $CURRENT_BATCH_SUBDIR/$MAPPING_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
