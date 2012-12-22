@@ -506,12 +506,25 @@ for b in $(seq 0 $[ (${#subdirs[@]}/$VARCO_SPLIT_MAP_batch_size)-1 ]); do
 	fi
 
 	# Get forward and reverse fastq files for current batch sample subdir
-	# fastq_files=($(ls "${subdirs[$si]" | egrep -v "_single_" | egrep ".*.fastq$"))
-	# forward_fastq=$(for f in ${fastq_files[@]}; do echo $f | egrep "_[0-9]+_1_"; break; done)
-	# reverse_fastq=$(for f in ${fastq_files[@]}; do echo $f | egrep "_[0-9]+_2_"; break; done)
-	# echo -e $forward_fastq
-	# echo -e $reverse_fastq
-	
+	fastq_files=($(ls "${subdirs[$si]}" | egrep -v "_single_" | egrep ".*.fastq$" 2>$ERROR_TMP))
+	echo -e "fastq files count: ${#fastq_files[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -e "fastq files list: ${fastq_files[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	forward_fastq=$(for f in "${fastq_files[@]}"; do 
+	m=$(echo $f | egrep "_[0-9]+_1_" 2>>$ERROR_TMP); if [[ -n $m ]]; then echo $m; break; fi
+	done)
+	reverse_fastq=$(for f in "${fastq_files[@]}"; do 
+	m=$(echo $f | egrep "_[0-9]+_2_" 2>>$ERROR_TMP); if [[ -n $m ]]; then echo $m; break; fi
+	done 2>>$ERROR_TMP)
+	if [[ -s $ERROR_TMP ]]; then
+		 echo "$(date '+%Y_%m_%d %T') [Batch mode] Failed An error occured while listing for forward and reverse fastq files in ${subdirs[$si]} batch sample directory." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline" | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1			
+	else
+		echo -e "forward fastq file: $forward_fastq" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "reverse fastq file: $reverse_fastq" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	fi		
+
+
         # 1.4 Create Quality control and trimming sub-subdir: fastqc and trimmomatic, optional step
 	# if [[ $VARCO_QC_TRIM_process == "TRUE" ]]; then
 	#     echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating quality control and trimming sub-directory: $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
