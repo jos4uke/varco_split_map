@@ -555,20 +555,20 @@ for b in $(seq 0 $[ (${#subdirs[@]}/$VARCO_SPLIT_MAP_batch_size)-1 ]); do
 	 fi
 
         # 1.5 Create a mapping sub-subdir for each sample
-	# echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating mapping sub-directory: $CURRENT_BATCH_SUBDIR/$MAPPING_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
-	# if [[ -d $CURRENT_BATCH_SUBDIR/$MAPPING_DIR ]]; then
-	#     echo "$(date '+%Y_%m_%d %T') [Mapping output directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	# else
-	#     mkdir $CURRENT_BATCH_SUBDIR/$MAPPING_DIR 2>$ERROR_TMP
-	#     if [[ $? -ne 0 ]]; then
-	# 	echo "$(date '+%Y_%m_%d %T') [Mapping output directory] Failed Mapping output directory, $CURRENT_BATCH_SUBDIR/$MAPPING_DIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	# 	echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	# 	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	# 	exit 126
-	#     else
-	# 	echo "$(date '+%Y_%m_%d %T') [Mapping output directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	#     fi
-	# fi
+	 echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating mapping sub-directory: $CURRENT_BATCH_SUBDIR/$MAPPING_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	 if [[ -d $CURRENT_BATCH_SUBDIR/$MAPPING_DIR ]]; then
+	     echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping output directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	 else
+	     mkdir $CURRENT_BATCH_SUBDIR/$MAPPING_DIR 2>$ERROR_TMP
+	     if [[ $? -ne 0 ]]; then
+	 	echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping output directory] Failed Mapping output directory, $CURRENT_BATCH_SUBDIR/$MAPPING_DIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	 	echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	 	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	 	exit 126
+	     else
+	 	echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping output directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	     fi
+	 fi
 	
 	# 1.5.1 Build mapper command
 
