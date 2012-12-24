@@ -166,7 +166,7 @@ buildCommandLineOptions()
 		toupper($0) ~ patternConfig  { 
 			val=$2; split($1, a, "_"); opt=a[length(a)]; 
 			if (length(opt) == 1) opt_val="-"opt" "val; 
-			else if (toupper(val) ~ "(TRUE|FALSE)") opt_val="--"opt; 
+			else if (toupper(val) ~ "(TRUE|1)") opt_val="--"opt; 
 			else opt_val="--"opt"="val; 
 			print opt_val}'
 }
