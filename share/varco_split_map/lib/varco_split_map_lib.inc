@@ -144,12 +144,32 @@ waitall() {
 }
 
 #-------------------------------------------------------------------------
-# Function : but $message_string
+# Function : degug $message_string
 # Purpose  : print a debug message to the standard error
-debug() { echo "DEBUG: $*" >&2; }
+debug() { echo "$(date '+%Y_%m_%d %T') DEBUG: $*" >&2; }
 
+#-------------------------------------------------------------------------
+# Function : buildCommandLineOptions command_name [prefix]
+# Purpose  : build the command line options for the given command_name
+buildCommandLineOptions()
+{
+    typeset cmd_name=$1
+    typeset config_prefix=$2
 
-
+	# if command_name contains spaces, replace blanks by underscores
+	# example: samtools view => samtools_view
+	[[ $cmd_name =~ " " ]] && cmd_name=${cmd_name// /_}
+	# if config_prefix not null, suffixed it with underscore    
+	[[ -n $config_prefix ]] && config_prefix=$config_prefix"_"
+	set | awk -F= -v cfg=${cmd_name} -v prefix=${config_prefix} '
+		BEGIN {cfg = toupper(cfg); prefix = toupper(prefix); patternConfig="^" prefix cfg;} 
+		toupper($0) ~ patternConfig  { 
+			val=$2; split($1, a, "_"); opt=a[length(a)]; 
+			if (length(opt) == 1) opt_val="-"opt" "val; 
+			else if (toupper(val) ~ "(TRUE|FALSE)") opt_val="--"opt; 
+			else opt_val="--"opt"="val; 
+			print opt_val}'
+}
 
 
 
