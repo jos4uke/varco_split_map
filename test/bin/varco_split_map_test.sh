@@ -117,7 +117,145 @@ testFailedBuildingCommandLineOptions()
 	assertFalse 'Unexpected output to stderr' "[ -s ${stderrF} ]"
 }
 
+#-------------------------------
+# testFailedWaitingCliProcesses
+#
+testFailedWaitingCliProcesses()
+{
+	# test variables
+	samples=("DG" "DI")
+	pids_arr=()
+	# test functions
+	exit_on_error()
+	{
+		[[ -s ${stderrF} ]] && exit_on_error
+	}
 
+	# get and set cli options
+	echo -ne "Getting and setting cli options ... " | tee -a ${stdoutF} 2>&1
+    prefix="mytest"
+    for cfg in $(get_config_sections $USER_CONFIG_FILE); do
+		unset $(set | awk -F= -v cfg="${cfg}" -v prefix="${prefix}" 'BEGIN { 
+          cfg = toupper(cfg);
+          prefix = toupper(prefix);
+       }
+       /^prefix_cfg_/  { print $1 }') $(toupper ${prefix}_${cfg}_)
+		set_config_params $USER_CONFIG_FILE ${cfg} ${prefix} 2>${stderrF}
+	done
+	[[ -s ${stderrF} ]] && exit_on_error
+	echo -e "done" | tee -a ${stdoutF} 2>&1
+
+	# for each sample
+	for s in "${samples[@]}"; do
+		echo -e "Processing sample $s ... " | tee -a ${stdoutF} 2>&1
+
+	## create sample output dir
+		CURRENT_SAMPLE_DIR=$TEST_OUTPUT_DIR/$s	
+		if [[ ! -d $CURRENT_SAMPLE_DIR ]]; then
+			echo -ne "Creating sample output directory $CURRENT_SAMPLE_DIR ... " | tee -a ${stdoutF} 2>&1
+			mkdir $CURRENT_SAMPLE_DIR 2>${stderrF}
+			echo -e "done" | tee -a ${stdoutF} 2>&1
+		else
+			echo -e "Sample output directory $CURRENT_SAMPLE_DIR already exists." | tee -a ${stdoutF} 2>&1
+		fi
+
+	## get fastq files
+		fastq_files=($(ls "$TEST_DATA_ROOT_DIR/$s" | egrep ".*.fastq$" 2>${stderrF}))
+		if [[ ! -s ${stderrF} ]]; then 
+			echo -e "fastq files count: ${#fastq_files[@]}" | tee -a ${stdoutF} 2>&1
+			echo -e "fastq files list: ${fastq_files[@]}" | tee -a ${stdoutF} 2>&1
+		else
+			exit_on_error	
+		fi
+		forward_fastq=$(for f in "${fastq_files[@]}"; do 
+		m=$(echo $f | egrep "_[0-9]+_1_" 2>${stderrF}); if [[ -n $m ]]; then echo $m; break; fi
+		done 2>${stderrF})
+		exit_on_error
+		echo -e "forward fastq: $forward_fastq"
+		reverse_fastq=$(for f in "${fastq_files[@]}"; do 
+		m=$(echo $f | egrep "_[0-9]+_2_" 2>${stderrF}); if [[ -n $m ]]; then echo $m; break; fi
+		done 2>${stderrF})
+		exit_on_error
+		echo -e "reverse fastq: $reverse_fastq"
+		CURRENT_SAMPLE_NAME=$(echo "${fastq_files[0]}" | gawk '
+	    	function getSampleName(str) {
+        	      sample="";
+        	      while(match(str, /^(.*_[0-9])_[1-2]_(.*).fastq$/, a)) 
+        	      {
+            	    sample=a[1]"_"a[2];
+           	     str = substr(str, RSTART+RLENGTH)
+           	   }
+           	   print sample;
+           	 }
+           	 {
+           	   getSampleName($0)
+           	 }' 2>${stderrF})
+		exit_on_error
+		echo -e "current sample name: $CURRENT_SAMPLE_NAME"
+
+	## build mapping cli
+		command_name="gsnap"
+		echo -e "--- Config section [${command_name}] ---"
+		for params in $(set | grep ^$(toupper ${prefix}_${command_name}_)); do
+	    	echo -e "params: $params"
+		done
+
+		cli_options=($(buildCommandLineOptions $command_name $prefix 2>${stderrF}))
+		if [[ ! -s ${stderrF} ]]; then
+			res="${cli_options[@]}"	
+			gsnap_out=$CURRENT_SAMPLE_NAME\_gsnap_out_s$s.sam
+			CURRENT_SAMPLE_ROOT_DIR=$TEST_DATA_ROOT_DIR/$s
+			CURRENT_SAMPLE_LOG=$CURRENT_SAMPLE_DIR/$CURRENT_SAMPLE_NAME.log
+			CURRENT_SAMPLE_ERR=$CURRENT_SAMPLE_DIR/$CURRENT_SAMPLE_NAME\_err.log	
+			gsnap_cli="gsnap $res $CURRENT_SAMPLE_ROOT_DIR/$forward_fastq $CURRENT_SAMPLE_ROOT_DIR/$reverse_fastq > $CURRENT_SAMPLE_DIR/$gsnap_out 2>${CURRENT_SAMPLE_ERR} &"
+	## run cli
+			echo -e "Executing command: ${gsnap_cli}"
+			eval "$gsnap_cli" 2>&1  
+			pid=$!
+			echo -e "$CURRENT_SAMPLE_NAME pid: $pid"
+			pids_arr=("${pids_arr[@]}" "$pid")
+			echo -e "${pids_arr[@]}"
+		else
+			exit_on_error
+		fi
+	done
+
+	# wait for all gsnap processes to finish
+	echo -e "pids array: ${pids_arr[@]}"
+	echo -e "gsnap processes: ${#pids_arr[@]}"
+	for p in "${pids_arr[@]}"; do
+		echo -e $(ps aux | grep $p | grep -v grep )
+	done
+	WAITALL_DELAY=60
+	waitall "${pids_arr[@]}"
+	echo -e "${pids_arr[@]}"
+
+	# check for errors
+	errs=0
+	for s in "${samples[@]}"; do
+		CURRENT_SAMPLE_DIR=$TEST_OUTPUT_DIR/$s
+		CURRENT_SAMPLE_ERR=$CURRENT_SAMPLE_DIR/$(ls "$CURRENT_SAMPLE_DIR" | egrep ".*_err.log$" | grep -v egrep 2>${stderrF})
+		if [[ -z $(tail -1 ${CURRENT_SAMPLE_ERR} | egrep "^Processed") ]]; then
+			echo -e "sample $s stderr output:"; cat ${CURRENT_SAMPLE_ERR}
+			let errs=errs+1
+		fi    
+		assertTrue "Expected output to stderr for sample $s" "[ -s ${CURRENT_SAMPLE_ERR} ]"
+	done
+
+	if [[ $errs == 0 ]]; then
+		echo -e "Processing all samples without errors." | tee -a ${stdoutF} 2>&1
+	else
+		echo -e "Some errors occured while processing samples." | tee -a ${stdoutF} 2>&1
+	fi
+
+	# for each sample
+	## build conversion cli
+	## run cli
+	# wait for all conversion processes to finish
+
+	# clean
+	# test for assertions
+}
 
 
 
@@ -149,6 +287,8 @@ oneTimeSetUp()
     TEST_OUTPUT_DIR="../output"
 
     USER_CONFIG_FILE="../etc/varco_split_map_user.config"
+
+	TEST_DATA_ROOT_DIR="../data/SEQUENCES"
 }
 
 setUp()
