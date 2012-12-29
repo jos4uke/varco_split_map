@@ -130,9 +130,11 @@ waitall() {
         debug "$pid is still alive."
         set -- "$@" "$pid"
       elif wait "$pid"; then
-        debug "$pid exited with zero exit status."
+		status=$?
+        debug "$pid exited with zero exit status ($status)."
       else
-        debug "$pid exited with non-zero exit status."
+		status=$?
+        debug "$pid exited with non-zero exit status ($status)."
         ((++errors))
       fi
     done
@@ -165,8 +167,11 @@ buildCommandLineOptions()
 		BEGIN {cfg = toupper(cfg); prefix = toupper(prefix); patternConfig="^" prefix cfg;} 
 		toupper($0) ~ patternConfig  { 
 			val=$2; split($1, a, "_"); opt=a[length(a)]; 
-			if (length(opt) == 1) opt_val="-"opt" "val; 
-			else if (toupper(val) ~ "(TRUE|1)") opt_val="--"opt; 
+			if (length(opt) == 1) {
+				if (toupper(val) ~ "TRUE") val=""; 
+				opt_val="-"opt" "val;
+			} 
+			else if (toupper(val) ~ "TRUE") opt_val="--"opt; 
 			else opt_val="--"opt"="val; 
 			print opt_val}'
 }
