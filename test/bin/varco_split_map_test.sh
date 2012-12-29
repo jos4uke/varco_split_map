@@ -128,11 +128,19 @@ testFailedWaitingCliProcesses()
 	# test functions
 	exit_on_error()
 	{
-		[[ -s ${stderrF} ]] && exit_on_error
+		[[ -s ${stderrF} ]] && $(cat ${stderrF} 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1; exit 1)
 	}
 
+	# main prefix files
+	TEST_PREFIX_DIR=$TEST_OUTPUT_DIR/$prefix
+	TEST_PREFIX_LOG=$TEST_PREFIX_DIR/$prefix.log
+	TEST_PREFIX_ERR=$TEST_PREFIX_DIR/$prefix\_err.log
+
+	# processing samples
+	echo -e "$(date '+%Y_%m_%d %T') [Init] Processing the following samples: ${samples[@]}" | tee -a ${stdoutF} 2>&1
+
 	# get and set cli options
-	echo -ne "Getting and setting cli options ... " | tee -a ${stdoutF} 2>&1
+	echo -ne "$(date '+%Y_%m_%d %T') [Config] Getting and setting cli options ... " | tee -a ${stdoutF} 2>&1
     prefix="mytest"
     for cfg in $(get_config_sections $USER_CONFIG_FILE); do
 		unset $(set | awk -F= -v cfg="${cfg}" -v prefix="${prefix}" 'BEGIN { 
@@ -142,28 +150,42 @@ testFailedWaitingCliProcesses()
        /^prefix_cfg_/  { print $1 }') $(toupper ${prefix}_${cfg}_)
 		set_config_params $USER_CONFIG_FILE ${cfg} ${prefix} 2>${stderrF}
 	done
-	[[ -s ${stderrF} ]] && exit_on_error
+	exit_on_error
 	echo -e "done" | tee -a ${stdoutF} 2>&1
+
+	# create the prefix test output directory
+	if [[ ! -d $TEST_PREFIX_DIR ]]; then
+		echo -ne "$(date '+%Y_%m_%d %T') [Directory] Creating test prefix $prefix output directory $TEST_PREFIX_DIR ... " | tee -a ${stdoutF} 2>&1
+		mkdir $TEST_PREFIX_DIR 2>${stderrF}
+		exit_on_error
+		echo -e "done" | tee -a ${stdoutF} 2>&1
+	else
+		echo -e "$(date '+%Y_%m_%d %T') [Directory] Test prefix output directory $TEST_PREFIX_DIR already exists." | tee -a ${stdoutF} 2>&1
+	fi
+
+	# copy std out to main prefix log
+	cat ${stdoutF} 2>&1 > $TEST_PREFIX_LOG
 
 	# for each sample
 	for s in "${samples[@]}"; do
-		echo -e "Processing sample $s ... " | tee -a ${stdoutF} 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Mapping] Processing sample $s ... " | tee ${stdoutF} 2>&1
 
 	## create sample output dir
-		CURRENT_SAMPLE_DIR=$TEST_OUTPUT_DIR/$s	
+		CURRENT_SAMPLE_DIR=$TEST_PREFIX_DIR/$s	
 		if [[ ! -d $CURRENT_SAMPLE_DIR ]]; then
-			echo -ne "Creating sample output directory $CURRENT_SAMPLE_DIR ... " | tee -a ${stdoutF} 2>&1
+			echo -ne "$(date '+%Y_%m_%d %T') [Mapping] Creating sample output directory $CURRENT_SAMPLE_DIR ... " | tee -a ${stdoutF} 2>&1
 			mkdir $CURRENT_SAMPLE_DIR 2>${stderrF}
+			exit_on_error
 			echo -e "done" | tee -a ${stdoutF} 2>&1
 		else
-			echo -e "Sample output directory $CURRENT_SAMPLE_DIR already exists." | tee -a ${stdoutF} 2>&1
+			echo -e "$(date '+%Y_%m_%d %T') [Mapping] Sample output directory $CURRENT_SAMPLE_DIR already exists." | tee -a ${stdoutF} 2>&1
 		fi
 
 	## get fastq files
 		fastq_files=($(ls "$TEST_DATA_ROOT_DIR/$s" | egrep ".*.fastq$" 2>${stderrF}))
 		if [[ ! -s ${stderrF} ]]; then 
-			echo -e "fastq files count: ${#fastq_files[@]}" | tee -a ${stdoutF} 2>&1
-			echo -e "fastq files list: ${fastq_files[@]}" | tee -a ${stdoutF} 2>&1
+			echo -e "$(date '+%Y_%m_%d %T') [Mapping] fastq files count: ${#fastq_files[@]}" | tee -a ${stdoutF} 2>&1
+			echo -e "$(date '+%Y_%m_%d %T') [Mapping] fastq files list: ${fastq_files[@]}" | tee -a ${stdoutF} 2>&1
 		else
 			exit_on_error	
 		fi
@@ -171,12 +193,12 @@ testFailedWaitingCliProcesses()
 		m=$(echo $f | egrep "_[0-9]+_1_" 2>${stderrF}); if [[ -n $m ]]; then echo $m; break; fi
 		done 2>${stderrF})
 		exit_on_error
-		echo -e "forward fastq: $forward_fastq"
+		echo -e "$(date '+%Y_%m_%d %T') [Mapping] forward fastq: $forward_fastq" | tee -a ${stdoutF} 2>&1
 		reverse_fastq=$(for f in "${fastq_files[@]}"; do 
 		m=$(echo $f | egrep "_[0-9]+_2_" 2>${stderrF}); if [[ -n $m ]]; then echo $m; break; fi
 		done 2>${stderrF})
 		exit_on_error
-		echo -e "reverse fastq: $reverse_fastq"
+		echo -e "$(date '+%Y_%m_%d %T') [Mapping] reverse fastq: $reverse_fastq" | tee -a ${stdoutF} 2>&1
 		CURRENT_SAMPLE_NAME=$(echo "${fastq_files[0]}" | gawk '
 	    	function getSampleName(str) {
         	      sample="";
@@ -191,13 +213,13 @@ testFailedWaitingCliProcesses()
            	   getSampleName($0)
            	 }' 2>${stderrF})
 		exit_on_error
-		echo -e "current sample name: $CURRENT_SAMPLE_NAME"
+		echo -e "$(date '+%Y_%m_%d %T') [Mapping] current sample name: $CURRENT_SAMPLE_NAME" | tee -a ${stdoutF} 2>&1
 
 	## build mapping cli
 		command_name="gsnap"
-		echo -e "--- Config section [${command_name}] ---"
+		echo -e "--- Config section [${command_name}] ---" | tee -a ${stdoutF} 2>&1
 		for params in $(set | grep ^$(toupper ${prefix}_${command_name}_)); do
-	    	echo -e "params: $params"
+	    	echo -e "params: $params" | tee -a ${stdoutF} 2>&1
 		done
 
 		cli_options=($(buildCommandLineOptions $command_name $prefix 2>${stderrF}))
@@ -206,55 +228,226 @@ testFailedWaitingCliProcesses()
 			gsnap_out=$CURRENT_SAMPLE_NAME\_gsnap_out_s$s.sam
 			CURRENT_SAMPLE_ROOT_DIR=$TEST_DATA_ROOT_DIR/$s
 			CURRENT_SAMPLE_LOG=$CURRENT_SAMPLE_DIR/$CURRENT_SAMPLE_NAME.log
-			CURRENT_SAMPLE_ERR=$CURRENT_SAMPLE_DIR/$CURRENT_SAMPLE_NAME\_err.log	
+			CURRENT_SAMPLE_ERR=$CURRENT_SAMPLE_DIR/$CURRENT_SAMPLE_NAME\_err.log
+			CURRENT_SAMPLE_PID=$CURRENT_SAMPLE_DIR/$CURRENT_SAMPLE_NAME.pid	
 			gsnap_cli="gsnap $res $CURRENT_SAMPLE_ROOT_DIR/$forward_fastq $CURRENT_SAMPLE_ROOT_DIR/$reverse_fastq > $CURRENT_SAMPLE_DIR/$gsnap_out 2>${CURRENT_SAMPLE_ERR} &"
 	## run cli
-			echo -e "Executing command: ${gsnap_cli}"
-			eval "$gsnap_cli" 2>&1  
+			echo -e "$(date '+%Y_%m_%d %T') [Mapping] Executing mapping command: ${gsnap_cli}" | tee -a ${stdoutF} 2>&1
+			eval "$gsnap_cli" 2>${stderrF}
 			pid=$!
-			echo -e "$CURRENT_SAMPLE_NAME pid: $pid"
+			echo -e "$(date '+%Y_%m_%d %T') [Mapping] $CURRENT_SAMPLE_NAME pid: $pid" | tee -a ${stdoutF} 2>&1
+			echo -e $pid >$CURRENT_SAMPLE_PID 2>>${stderrF}
 			pids_arr=("${pids_arr[@]}" "$pid")
-			echo -e "${pids_arr[@]}"
+			#echo -e "${pids_arr[@]}" # for testing purpose
+	
+	## copy stdout to log
+			cat ${stdoutF} 2>&1 | tee -a $CURRENT_SAMPLE_LOG 2>&1 | tee -a $TEST_PREFIX_LOG >/dev/null
+			exit_on_error
 		else
 			exit_on_error
 		fi
 	done
 
 	# wait for all gsnap processes to finish
-	echo -e "pids array: ${pids_arr[@]}"
-	echo -e "gsnap processes: ${#pids_arr[@]}"
+	echo -e "$(date '+%Y_%m_%d %T') [Mapping] gsnap pids count: ${#pids_arr[@]}" | tee ${stdoutF} 2>&1
+	echo -e "$(date '+%Y_%m_%d %T') [Mapping] gsnap pids list: ${pids_arr[@]}" | tee -a ${stdoutF} 2>&1
 	for p in "${pids_arr[@]}"; do
-		echo -e $(ps aux | grep $p | grep -v grep )
+		echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>{stderrF})
 	done
+	exit_on_error
 	WAITALL_DELAY=60
-	waitall "${pids_arr[@]}"
-	echo -e "${pids_arr[@]}"
+	waitall "${pids_arr[@]}" 2>${stderrF}
+	egrep "exited" ${stderrF} 2>&1 | tee -a ${stdoutF} 2>&1
+	cat ${stdoutF} 2>&1 | tee -a $TEST_PREFIX_LOG >/dev/null
 
 	# check for errors
 	errs=0
 	for s in "${samples[@]}"; do
-		CURRENT_SAMPLE_DIR=$TEST_OUTPUT_DIR/$s
-		CURRENT_SAMPLE_ERR=$CURRENT_SAMPLE_DIR/$(ls "$CURRENT_SAMPLE_DIR" | egrep ".*_err.log$" | grep -v egrep 2>${stderrF})
-		if [[ -z $(tail -1 ${CURRENT_SAMPLE_ERR} | egrep "^Processed") ]]; then
-			echo -e "sample $s stderr output:"; cat ${CURRENT_SAMPLE_ERR}
+		CURRENT_SAMPLE_DIR=$TEST_PREFIX_DIR/$s
+		CURRENT_SAMPLE_ERR=$CURRENT_SAMPLE_DIR/$(ls "$CURRENT_SAMPLE_DIR" | egrep ".*_err.log$" | grep -v egrep 2>>${stderrF})
+		CURRENT_SAMPLE_LOG=$CURRENT_SAMPLE_DIR/$(ls "$CURRENT_SAMPLE_DIR" | egrep -v ".*_err.log$" | egrep ".*.log$" | grep -v egrep 2>>${stderrF})
+		CURRENT_SAMPLE_PID=$CURRENT_SAMPLE_DIR/$(ls "$CURRENT_SAMPLE_DIR" | egrep ".*.pid$" | grep -v egrep 2>>${stderrF})
+
+		pid_status=$(egrep "exited" ${stderrF} 2>&1 | egrep $(cat $CURRENT_SAMPLE_PID) 2>&1)
+		echo -e "$(date '+%Y_%m_%d %T') [Mapping] pid status: $pid_status" 2>&1 | tee -a $CURRENT_SAMPLE_LOG 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1
+
+		if [[ -z $(echo -e $pid_status 2>&1 | egrep "zero exit status") ]]; then
+			echo -e "$(date '+%Y_%m_%d %T') [Mapping] sample $s, non zero exit status:\n$pid_status" | tee -a  $CURRENT_SAMPLE_LOG 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1
+			let errs=errs+1
+		fi
+
+		if [[ -z $(tail -n 1 "${CURRENT_SAMPLE_ERR}" | egrep -v "^$" | egrep "^Processed" 2>&1) ]]; then
+			echo -e "$(date '+%Y_%m_%d %T') [Mapping] sample $s stderr output:" 2>&1 | tee -a $CURRENT_SAMPLE_LOG 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1; 
+			cat "${CURRENT_SAMPLE_ERR}" 2>&1 | tee -a $CURRENT_SAMPLE_LOG 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1
 			let errs=errs+1
 		fi    
 		assertTrue "Expected output to stderr for sample $s" "[ -s ${CURRENT_SAMPLE_ERR} ]"
 	done
 
 	if [[ $errs == 0 ]]; then
-		echo -e "Processing all samples without errors." | tee -a ${stdoutF} 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Mapping] gsnap processing all samples without errors." | tee -a ${TEST_PREFIX_LOG} 2>&1
 	else
-		echo -e "Some errors occured while processing samples." | tee -a ${stdoutF} 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Mapping] some errors occured while gsnap processing samples." | tee -a ${TEST_PREFIX_LOG} 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Mapping] refer to $TEST_PREFIX_ERR file for details." | tee -a ${TEST_PREFIX_LOG} 2>&1
+		exit 1
 	fi
 
-	# for each sample
+	# for each conversion command
+	view_command="samtools view"
+	view_command_ext="bam"
+	sort_command="samtools sort"
+	sort_command_ext="sorted.$view_command_ext"
+	index_command="samtools index"
+	index_command_ext="${sort_command_ext}.bai"
+	conversion_commands=("$view_command" "$sort_command" "$index_command")
+	for cmd in "${conversion_commands[@]}"; do
+		echo -e "$(date '+%Y_%m_%d %T') [Conversion] Processing with $cmd ... " | tee ${stdoutF} 2>&1 | tee -a $CURRENT_SAMPLE_LOG 2>&1 | tee -a $TEST_PREFIX_LOG 2>&1
+
+	# reinitiate pids array 
+		pids_arr=()
+
+	## for each sample
+		for s in "${samples[@]}"; do
+			echo -e "$(date '+%Y_%m_%d %T') [Conversion] Processing sample $s ... " | tee ${stdoutF} 2>&1
+			
+	## get the sam file
+			CURRENT_SAMPLE_DIR=$TEST_PREFIX_DIR/$s
+			sam_out=$(ls "$CURRENT_SAMPLE_DIR" | egrep ".*_gsnap_out_s$s.sam$" | grep -v egrep 2>${stderrF})
+			if [[ ! -s ${stderrF} ]]; then
+				#echo -e "$(date '+%Y_%m_%d %T') [Conversion] gsnap sam output file: $sam_out" | tee -a ${stdoutF} 2>&1 # for testing purpose
+				CURRENT_SAMPLE_NAME=$(basename ${sam_out%.*})
+				CURRENT_ORI_SAMPLE_NAME=$(echo ${CURRENT_SAMPLE_NAME%_gsnap_out_*})
+				CURRENT_SAMPLE_LOG=$CURRENT_SAMPLE_DIR/${CURRENT_ORI_SAMPLE_NAME}.log
+				CURRENT_SAMPLE_ERR=$CURRENT_SAMPLE_DIR/${CURRENT_ORI_SAMPLE_NAME}_err.log
+				CURRENT_SAMPLE_PID=$CURRENT_SAMPLE_DIR/${CURRENT_ORI_SAMPLE_NAME}.pid
+				#echo -e ${CURRENT_ORI_SAMPLE_NAME};
+				#echo -e ${CURRENT_SAMPLE_ERR};
+			else
+				exit_on_error
+			fi
 	## build conversion cli
+			echo -e "--- Config section [${cmd// /_}] ---" | tee -a ${stdoutF} 2>&1
+			for params in $(set | grep ^$(toupper ${prefix}_${cmd// /_}_)); do
+	    		echo -e "params: $params" | tee -a ${stdoutF} 2>&1
+			done
+			cli_options=($(buildCommandLineOptions "$cmd" $prefix 2>${stderrF}))
+			if [[ ! -s ${stderrF} ]]; then
+				res="${cli_options[@]}"
+				echo -e "$(date '+%Y_%m_%d %T') [Conversion] $cmd cli options: $res" | tee -a ${stdoutF} 2>&1
+				case $cmd in
+					"$view_command")
+						if [[ -s $CURRENT_SAMPLE_DIR/$sam_out ]]; then
+							echo -e "$(date '+%Y_%m_%d %T') [Conversion] gsnap sam output file: $CURRENT_SAMPLE_DIR/$sam_out" | tee -a ${stdoutF} 2>&1		
+							cmd_out=$CURRENT_SAMPLE_NAME\.$view_command_ext
+							echo -e "$(date '+%Y_%m_%d %T') [Conversion] input: $sam_out" | tee -a ${stdoutF} 2>&1
+							echo -e "$(date '+%Y_%m_%d %T') [Conversion] output: $cmd_out" | tee -a ${stdoutF} 2>&1
+							cmd_cli="$cmd $res $CURRENT_SAMPLE_DIR/$sam_out > $CURRENT_SAMPLE_DIR/$cmd_out 2>>${CURRENT_SAMPLE_ERR} &"
+						else
+							debug "$CURRENT_SAMPLE_DIR/$sam_out file does not exist or is empty." | tee -a${CURRENT_SAMPLE_ERR} 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1; exit 1
+						fi
+					;;
+					"$sort_command")
+						bam_out=$CURRENT_SAMPLE_NAME\.$view_command_ext
+						if [[ -s $CURRENT_SAMPLE_DIR/$bam_out ]]; then
+							cmd_out=$CURRENT_SAMPLE_NAME\.sorted
+							echo -e "$(date '+%Y_%m_%d %T') [Conversion] input: $bam_out" | tee -a ${stdoutF} 2>&1
+							echo -e "$(date '+%Y_%m_%d %T') [Conversion] output: $cmd_out" | tee -a ${stdoutF} 2>&1
+							cmd_cli="$cmd $res $CURRENT_SAMPLE_DIR/$bam_out $CURRENT_SAMPLE_DIR/$cmd_out 2>>${CURRENT_SAMPLE_ERR} &"
+						else
+							debug "$CURRENT_SAMPLE_DIR/$bam_out file does not exist or is empty." | tee -a${CURRENT_SAMPLE_ERR} 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1; exit 1
+						fi
+					;;	
+					"$index_command")
+						sorted_bam_out=${CURRENT_SAMPLE_NAME}.$sort_command_ext
+						if [[ -s $CURRENT_SAMPLE_DIR/$sorted_bam_out ]]; then
+							cmd_out=$CURRENT_SAMPLE_NAME\.$index_command_ext
+							echo -e "$(date '+%Y_%m_%d %T') [Conversion] input: $sorted_bam_out" | tee -a ${stdoutF} 2>&1
+							echo -e "$(date '+%Y_%m_%d %T') [Conversion] output: $cmd_out" | tee -a ${stdoutF} 2>&1
+							cmd_cli="$cmd $res $CURRENT_SAMPLE_DIR/$sorted_bam_out 2>>${CURRENT_SAMPLE_ERR} &"
+						else
+							debug "$CURRENT_SAMPLE_DIR/$sorted_bam_out file does not exist or is empty." | tee -a${CURRENT_SAMPLE_ERR} 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1; exit 1
+						fi
+					;;
+					*)
+						debug "unexpected $cmd, it will not be processed." | tee -a${CURRENT_SAMPLE_ERR} 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1
+				esac
 	## run cli
-	# wait for all conversion processes to finish
+				if [[ -n $cmd_cli ]]; then
+					echo -e "$(date '+%Y_%m_%d %T') [Conversion] Executing command: ${cmd_cli}" | tee -a ${stdoutF} 2>&1
+					eval "$cmd_cli" 2>&1  
+					pid=$!
+					echo -e "$(date '+%Y_%m_%d %T') [Conversion] $CURRENT_SAMPLE_NAME pid: $pid" | tee -a ${stdoutF} 2>&1
+					echo -e $pid >$CURRENT_SAMPLE_PID 2>${stderrF}
+					pids_arr=("${pids_arr[@]}" "$pid")
+					#echo -e "$(date '+%Y_%m_%d %T') [Conversion] $cmd pids count: ${#pids_arr[@]}" | tee -a ${stdoutF} 2>&1 # for testing purpose
+					#echo -e "$(date '+%Y_%m_%d %T') [Conversion] $cmd pids list: ${pids_arr[@]}" | tee -a ${stdoutF} 2>&1 # for testing purpose
+
+				else
+					debug "cmd cli is null. cmd name, $cmd, was not processed" | tee -a ${CURRENT_SAMPLE_ERR} 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1; exit 1
+				fi
+
+	## copy stdout to logs
+				cat ${stdoutF} 2>&1 | tee -a $CURRENT_SAMPLE_LOG 2>&1 | tee -a $TEST_PREFIX_LOG >/dev/null			
+			else
+				exit_on_error
+			fi
+		done
+	
+	# wait for all conversion cmd processes to finish then run the next cmd
+		echo -e "$(date '+%Y_%m_%d %T') [Conversion] $cmd pids count: ${#pids_arr[@]}" | tee ${stdoutF} 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Conversion] $cmd pids list: ${pids_arr[@]}" | tee -a ${stdoutF} 2>&1		
+		for p in "${pids_arr[@]}"; do
+			echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>{stderrF})
+		done
+		exit_on_error
+		WAITALL_DELAY=60
+		waitall "${pids_arr[@]}" 2>${stderrF}
+		egrep "exited" ${stderrF} 2>&1 | tee -a ${stdoutF} 2>&1
+		cat ${stdoutF} 2>&1 >>${TEST_PREFIX_LOG}
+		#cat ${stderrF} 2>&1 >>${TEST_PREFIX_ERR}
+
+	# check for errors
+		errs=0
+		for s in "${samples[@]}"; do
+			CURRENT_SAMPLE_DIR=$TEST_PREFIX_DIR/$s
+			CURRENT_SAMPLE_ERR=$CURRENT_SAMPLE_DIR/$(ls "$CURRENT_SAMPLE_DIR" | egrep ".*_err.log$" | grep -v egrep 2>>${stderrF})
+			CURRENT_SAMPLE_LOG=$CURRENT_SAMPLE_DIR/$(ls "$CURRENT_SAMPLE_DIR" | egrep -v ".*_err.log$" | egrep ".*.log$" | grep -v egrep 2>>${stderrF})
+			CURRENT_SAMPLE_PID=$CURRENT_SAMPLE_DIR/$(ls "$CURRENT_SAMPLE_DIR" | egrep ".*pid$" | grep -v egrep 2>>${stderrF})
+
+			pid_status=$(egrep "exited" ${stderrF} 2>&1 | egrep $(cat $CURRENT_SAMPLE_PID) 2>>${stderrF})
+			echo -e "$(date '+%Y_%m_%d %T') [Conversion] pid status: $pid_status" 2>&1 | tee -a $CURRENT_SAMPLE_LOG 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1
+	
+			if [[ -z $(echo -e $pid_status 2>&1 | egrep "zero exit status") ]]; then
+				echo -e "$(date '+%Y_%m_%d %T') [Conversion] sample $s, non zero exit status:\n$pid_status" | tee -a  $CURRENT_SAMPLE_LOG 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1
+				let errs=errs+1
+			fi		
+
+			if [[ -z $(tail -n 1 ${CURRENT_SAMPLE_ERR} | egrep -v "^$" | egrep "^\[samopen\]") ]]; then
+				echo -e "$(date '+%Y_%m_%d %T') [Conversion] sample $s stderr output:" 2>&1 | tee -a ${CURRENT_SAMPLE_LOG} 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1; cat ${CURRENT_SAMPLE_ERR} 2>&1 | tee -a $CURRENT_SAMPLE_LOG 2>&1 | tee -a $TEST_PREFIX_ERR 2>&1
+				let errs=errs+1
+			fi    
+			#assertFalse "Unexpected output to stderr for sample $s" "[ -s ${CURRENT_SAMPLE_ERR} ]"
+		done
+
+		if [[ $errs == 0 ]]; then
+			echo -e "$(date '+%Y_%m_%d %T') [Conversion] $cmd processing all samples without errors." | tee -a ${TEST_PREFIX_LOG} 2>&1
+		else
+			echo -e "$(date '+%Y_%m_%d %T') [Conversion] some errors occured while $cmd processing samples." | tee -a ${TEST_PREFIX_LOG} 2>&1
+			echo -e "$(date '+%Y_%m_%d %T') [Conversion] refer to $TEST_PREFIX_ERR file for details." | tee -a ${TEST_PREFIX_LOG} 2>&1
+			exit 1
+		fi
+	done
 
 	# clean
-	# test for assertions
+	## unset environment variables with used namespace
+	echo -ne "$(date '+%Y_%m_%d %T') [Cleaning] Unsetting all environment variables using namespace: $NAMESPACE ... " | tee -a ${TEST_PREFIX_LOG} 2>&1
+	unset $(set | awk -F= -v prefix="${prefix}" 'BEGIN { 
+	          prefix = toupper(prefix);
+	       }
+	       /^prefix_/  { print $1 }') $(toupper ${prefix}_)
+	echo -e "done" | tee -a ${TEST_PREFIX_LOG} 2>&1
+
+	# test for assertions: todo
 }
 
 
