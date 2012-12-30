@@ -19,7 +19,7 @@ VERSION=dev
 # SECTION CONFIGURATION
 #######################
 
-# Inclusion de la librairie de fonctions
+# Include lib functions
 
 PROD_PREFIX="/usr/local"
 DEV_PREFIX="$(pwd)/.."
@@ -40,7 +40,7 @@ NAMESPACE="VARCO"
 VARCO_SPLIT_MAP_SHARED=$PREFIX/share/$(basename ${0%.*})
 PROD_VARCO_SPLIT_MAP_USER_CONFIG=$WORKING_DIR/$(basename ${0%.*})_user.config
 DEV_VARCO_SPLIT_MAP_USER_CONFIG=$VARCO_SPLIT_MAP_SHARED/etc/$(basename ${0%.*})_user.config
-VARCO_SPLIT_MAP_USER_CONFIG=$DEV_VARCO_SPLIT_MAP_USER_CONFIG # TO BE CHANGED WHEN SWITCHING TO PROD
+VARCO_SPLIT_MAP_USER_CONFIG=$PROD_VARCO_SPLIT_MAP_USER_CONFIG # TO BE CHANGED WHEN SWITCHING TO PROD
 VARCO_SPLIT_MAP_USER_CONFIG_JOB=$WORKING_DIR/$JOB_TAG/${JOB_TAG}_$(basename ${0%.*})_user.config
 
 MAX_NUMB_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
@@ -59,6 +59,25 @@ PREREQUISITES_MSG="You need to copy the user configuration file to your working 
                 \$ cp ${VARCO_SPLIT_MAP_USER_CONFIG} .
                 Then use any editor (emacs, gedit, nano, vi, etc.) to open it and configure the options.
                 Save your changes, and you are ready to run the script."
+
+MAPPER_VERSION=$(gsnap --version 2>&1 | awk -F"\n" 'BEGIN{info=""}; {info=(info "\n\t" $1)}; END{printf info}')
+
+# local functions
+exit_on_error()
+{
+	err=$1
+	msg=$2
+	status=$3
+	log=$4
+	if [[ "$status" -ne 0 ]]; then
+		echo -e "$(date '+%Y_%m_%d %T') $msg" | tee -a $err 2>&1 | tee -a $log 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $status." | tee -a $err 2>&1 | tee -a $log 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] Tail error output:" | tee -a $log 2>&1
+		echo -e "... $(tail -n 10 $err)" 2>&1 | tee -a $log 2>&1
+    	echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $err." | tee -a $log 2>&1 
+		exit $status
+	fi
+}
 
 #==============================================
 # TEST if enough args else print usage message
@@ -168,7 +187,7 @@ else
     if [[ $? -ne 0 ]]; then
 	echo "$(date '+%Y_%m_%d %T') [Job directory] Failed Job directory, $JOB_TAG, was not created." | tee -a $ERROR_TMP 2>&1
 	echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." 2>&1
+	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." 2>&1
 	exit 126
     else
 	echo "$(date '+%Y_%m_%d %T') [Job directory] OK $JOB_TAG directory was created successfully. Will output all job files in this directory." | tee -a $ERROR_TMP 2>&1
@@ -183,10 +202,9 @@ if [[ -d $LOG_DIR ]]; then
 else
     mkdir $LOG_DIR 2>>$ERROR_TMP
     if [[ $? -ne 0 ]]; then
-	cat $ERROR_TMP > $LOG_DIR/$LOGFILE 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Log directory] Failed Log directory, $LOG_DIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %T') [Log directory] Failed Log directory, $LOG_DIR, was not created." | tee -a $ERROR_TMP 2>&1
+	echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1
+	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
 	exit 126
     else    
 	[[ -s $ERROR_TMP ]] && cat $ERROR_TMP > $LOG_DIR/$LOGFILE 2>&1
@@ -201,13 +219,13 @@ fi
 #
 # Check for DATA_ROOT_DIR existence
 #
-echo "$(date '+%Y_%m_%d %T') [Data root directory] Checking $DATA_ROOT_DIR directory ..." | tee -a $ERROR_TMP 2>&1
+echo "$(date '+%Y_%m_%d %T') [Data root directory] Checking $DATA_ROOT_DIR directory ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 if [[ -d $DATA_ROOT_DIR ]]; then
     echo "$(date '+%Y_%m_%d %T') [Data root directory] $DATA_ROOT_DIR exists and is a directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 else
     echo "$(date '+%Y_%m_%d %T') [Data root directory] Failed $DATA_ROOT_DIR does not exist or is not a directory." | tee $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
     exit 1
 fi
 
@@ -215,7 +233,7 @@ fi
 # Test for absence of user config file
 # if present ok continue else display warning message and exit
 #
-echo "$(date '+%Y_%m_%d %T') [Check config: user config file] Checking for $VARCO_SPLIT_MAP_USER_CONFIG user config file ..." | tee -a $ERROR_TMP 2>&1
+echo "$(date '+%Y_%m_%d %T') [Check config: user config file] Checking for $VARCO_SPLIT_MAP_USER_CONFIG user config file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 if [[ -s $VARCO_SPLIT_MAP_USER_CONFIG ]]; then
 #if [[ -s $WORKING_DIR/$(basename ${0%.*})_user.config ]]; then # for testing purpose
     echo "$(date '+%Y_%m_%d %T') [Check config: user config file] OK User config file, $VARCO_SPLIT_MAP_USER_CONFIG, exists and is not empty." | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -257,7 +275,7 @@ if [[ ! -s $ERROR_TMP ]]; then
 else
     echo "$(date '+%Y_%m_%d %T') [Check config: job user config file] Failed loading user config file, $VARCO_SPLIT_MAP_USER_CONFIG_JOB" | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
     exit $rtrn
 fi
 
@@ -301,7 +319,7 @@ fi
 echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Searching for fastq sample subdirs ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 all_subdirs=($(find $DATA_ROOT_DIR -maxdepth 1 -type d | egrep -v ^$DATA_ROOT_DIR$ 2>$ERROR_TMP))
 if [[ -s $ERROR_TMP ]]; then 
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1; 
+    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1; 
     exit 1
 fi
 #read -a all_subdirs_arr echo <<< $(echo -e $all_subdirs | tr " " "\n")
@@ -321,7 +339,7 @@ done 2>>$ERROR_TMP))
 if [[ -s $ERROR_TMP ]]; then
         echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Failed An error occured while filtering for subdirs to include." | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
     exit $rtrn
 else
     echo -e "include pattern(s) subdirectories count: ${#inc_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -347,7 +365,7 @@ fi
 if [[ -s $ERROR_TMP ]]; then
     echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Failed An error occured while filtering for subdirs to exclude." | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
     exit $rtrn
 else
     echo -e "include pattern(s) subdirectories count: ${#subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
@@ -358,42 +376,20 @@ fi
 echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Filtering subdirs for fastq files ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 fastq_forward_pattern="*_1_*.fastq"
 fastq_reverse_pattern="*_2_*.fastq"
+fastq_failed_message="[Fastq subdirs] Failed An error occured while filtering for subdirs with fastq files."
 fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
 	fastq_files=($(ls "$subdir" | egrep -v "_single_" | egrep ".*.fastq$" 2>$ERROR_TMP))
+	exit_on_error "$ERROR_TMP" "$fastq_failed_message" $? "$LOG_DIR/$LOGFILE"
 	if [[ "${#fastq_files[@]}" == 2 ]]; then
 	    echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] INFO $subdir has 2, non '_single_', fastq files." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
-            # get the pair if possible
+        # get the pair if possible
 	    # else warn and discard the subdir
-	    sample_name_1=$(echo "${fastq_files[0]}" | gawk '
-	    function getSampleName(str) {
-              sample="";
-              while(match(str, /^(.*_[0-9])_[1-2]_(.*).fastq$/, a)) 
-              {
-                sample=a[1]"_"a[2];
-                str = substr(str, RSTART+RLENGTH)
-              }
-              print sample;
-            }
-            {
-              getSampleName($0)
-            }' 2>>$ERROR_TMP
-	    )
-	    sample_name_2=$(echo "${fastq_files[1]}" | gawk '
-	    function getSampleName(str) {
-              sample="";
-              while(match(str, /^(.*_[0-9])_[1-2]_(.*).fastq$/, a)) 
-              {
-                sample=a[1]"_"a[2];
-                str = substr(str, RSTART+RLENGTH)
-              }
-              print sample;
-            }
-            {
-              getSampleName($0) 
-            }' 2>>$ERROR_TMP
-	    )
-	    
-	    if [[ $sample_name_1 == $sample_name_2 ]]; then
+	    sample_name_1=$(getFastqSampleName "${fastq_files[0]}" 2>>$ERROR_TMP)
+		exit_on_error "$ERROR_TMP" "$fastq_failed_message" $? "$LOG_DIR/$LOGFILE"
+	    sample_name_2=$(getFastqSampleName "${fastq_files[1]}" 2>>$ERROR_TMP)
+	    exit_on_error "$ERROR_TMP" "$fastq_failed_message" $? "$LOG_DIR/$LOGFILE"
+
+	    if [[ "$sample_name_1" == "$sample_name_2" ]]; then
 		echo -e "$(date '+%Y_%m_%d %T') [Fastq subdirs] INFO $subdir, same fastq sample name: forward=$sample_name_1 == reverse=$sample_name_2" 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2 
 		echo -e "$subdir" 
 	    else
@@ -406,24 +402,17 @@ fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
 	elif [[ "${#fastq_files[@]}" > 2 ]]; then
 	    # not satisfying
 	    echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning: $subdir has more than 2, non '_single_', fastq files." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
-	    echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning: You need to leave in $subdir only the 2 forward (_1_) and reverse (_2_) fastq files. '_single_' fastq files are ignored." 1>&2| tee -a $LOG_DIR/$LOGFILE 1>&2
+	    echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning: You need to leave in $subdir only the 2 forward (_1_) and reverse (_2_) fastq files. '_single_' fastq files are ignored." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
 	    echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning: $subdir will not be considered, ambiguous fastq files list." 1>&2 | tee -a $LOG_DIR/$LOGFILE 1>&2
 	fi
 	done 2>>$LOG_DIR/$LOGFILE))
-rtrn=$?
-if [[ -s $ERROR_TMP ]]; then
-        echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Failed An error occured while filtering for subdirs with fastq files." | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-    exit $rtrn
-else
+
     echo -e "fastq subdirectories count: ${#fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo -e "fastq subdirectories list: ${fastq_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
     if [[ "${#fastq_subdirs[@]}" -ne "${#subdirs[@]}" ]]; then
 	echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning Some subdirectories was discarded because fastq files checking has detected divergent forward/reverse sample name or an unexpected fastq files count." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning More information about discarded subdirectories can be found in $LOG_DIR/$LOGFILE" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning More details about discarded subdirectories can be found in $LOG_DIR/$LOGFILE" | tee -a $LOG_DIR/$LOGFILE 2>&1
     fi
-fi
 
 
 #
@@ -438,162 +427,291 @@ fi
 # Batch mode:
 # 1. Iterate over batches
 # 1.1 Test for average cpu load
-# 1.2 Iterate over batch samples
-# 1.3 Create an output directory for each sample
-# 1.4 Create Quality control and trimming sub-subdir for each sample: fastqc and trimmomatic, optionnal step
-# 1.5 Create a mapping sub-subdir for each sample
-
-# iterate over batches
-## test for average cpu load
-## create an output directory for each sample
-## create Quality control and trimming subdir: fastqc and trimmomatic, optional step
-## create a mapping subdir for each sample
-## map in parallel all samples in one batch
-## test for disk space
-## convert, sort and index
-## if clean true, clean each sample subdir
+# 1.2 Test available disk space
+# 1.3 Iterate over batch samples for getting sample infos
+# 1.3.1 Create an output directory for each sample
+# 1.4 Iterate over batch samples for Quality Control and Trimming
+# 1.4.1 Create Quality control and trimming sub-subdir for each sample: fastqc and trimmomatic, optionnal step
+# 1.4.2 Perform QC before -> waitall
+# 1.4.3 Perform Trimming -> waitall
+# 1.4.4 Perform QC after -> waitall
+# 1.5 Wait for all QC+Trim processes to finish
+# 1.6 Iterate over batch samples for Mapping
+# 1.6.1 Create a mapping sub-subdir for each sample
+# 1.6.2 Create mapping subdirs
+# 1.6.3 Perform mapping -> waitall
+# 1.7 Wait for all Mapping processes to finish
+# 1.8 Iterate over commands for Conversion
+# 1.8.1 Iterate over batch samples
+# 1.8.2 Perform bam conversion -> waitall
+# 1.8.3 Perform bam sorting -> waitall
+# 1.8.4 Perform bam indexing -> waitall
+# 1.9 Wait for all Conversion processes to finish
+# 1.10 Unshifting current batch samples
+# 1.11 Next batch
+# 1.12 End of batches
+# 1.13 Clean
 
 echo "$(date '+%Y_%m_%d %T') [Batch mode] Running batch mode on fastq subdirs ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 unsorted_subdirs=("${fastq_subdirs[@]}")
 readarray -t subdirs < <(printf '%s\0' "${unsorted_subdirs[@]}" | sort -z | xargs -0n1)
 
+# Computing number of batches expected to run
+## if #subdirs <= batch_size then #batches=1
+## if #subdirs > batch_size then #batches=ceil(#subdirs/batch_size)
+echo "$(date '+%Y_%m_%d %T') [Batch mode] Computing number of batches to run ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+if [[ "${#subdirs[@]}" -le "$VARCO_SPLIT_MAP_batch_size" ]]; then
+	batches=1
+else
+	batches=$(echo "${#subdirs[@]} $VARCO_SPLIT_MAP_batch_size" | awk '{print int( ($1/$2) + 1 )}' 2>ERROR_TMP)
+fi
+echo "$(date '+%Y_%m_%d %T') [Batch mode] $batches batche(s) expected to be run." | tee -a $LOG_DIR/$LOGFILE 2>&1
+
 # 1. Iterate over batches
-for b in $(seq 0 $[ (${#subdirs[@]}/$VARCO_SPLIT_MAP_batch_size)-1 ]); do
+for b in $(seq 0 $[ $batches-1 ]); do
 
-    # 1.1 Test for average cpu load: TODO
-    echo "$(date '+%Y_%m_%d %T') [Batch mode] Testing for average cpu load before running on samples batch #$[$b+1] ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
-
-    # 1.2 Iterate over batch samples
+    # 1.1 Test for average cpu load and available disk space: TODO
+    echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Testing for average cpu load before running on samples batch #$[$b+1] ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	
+    # 1.2 Test for available disk space: TODO
+	echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Testing for available disk space before running on samples batch #$[$b+1] ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+	#echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	#avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
+	echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    
+	# 1.3 Iterate over batch samples for getting sample infos
+	last=FALSE 	# for last batch sample
     echo "$(date '+%Y_%m_%d %T') [Batch mode] Running batch mode on samples batch #$[$b+1] ..." | tee -a $LOG_DIR/$LOGFILE 2>&1   
-    last=FALSE
     for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
-	si=$[$s-1]
-	sdi=$[$si+$b*$VARCO_SPLIT_MAP_batch_size]
-	echo -e "$sdi, $si: ${subdirs[$si]}"
-	CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename "${subdirs[$si]}")
-	if [[ "$s" -lt "${#subdirs[@]}" ]]; then
-        # 1.3 create an output directory for each sample
-	    echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating sample directory: $CURRENT_BATCH_SUBDIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
-	    if [[ -d $CURRENT_BATCH_SUBDIR ]]; then
-		echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	    else
-		mkdir $CURRENT_BATCH_SUBDIR 2>$ERROR_TMP
-		if [[ $? -ne 0 ]]; then
-		    echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] Failed Sample output directory, $CURRENT_BATCH_SUBDIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-		    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-		    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-		    exit 126
-		else
-		    echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		si=$[$s-1]
+		sdi=$[$si+$b*$VARCO_SPLIT_MAP_batch_size]
+		echo -e "$sdi, $si: ${subdirs[$si]}"
+		CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename "${subdirs[$si]}")
+		sample_dir_failed_msg="[Batch mode: sample output directory] Failed Sample output directory, $CURRENT_BATCH_SUBDIR, was not created."
+	# 1.3.1 Create an output directory for each sample
+		if [[ "$s" -lt "${#subdirs[@]}" ]]; then
+	    	echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating sample output directory: $CURRENT_BATCH_SUBDIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	    	if [[ -d $CURRENT_BATCH_SUBDIR ]]; then
+				echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	    	else
+				mkdir $CURRENT_BATCH_SUBDIR 2>$ERROR_TMP
+				rtrn=$?
+				exit_on_error "$ERROR_TMP" "$sample_dir_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"		
+				echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	    	fi
+		elif [[ "$s" -eq "${#subdirs[@]}" ]]; then
+	    	last=TRUE
+	    	echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating last batch sample output directory: $CURRENT_BATCH_SUBDIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	    	if [[ -d $CURRENT_BATCH_SUBDIR ]]; then
+				echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR last batch directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	    	else
+				mkdir $CURRENT_BATCH_SUBDIR 2>$ERROR_TMP
+				rtrn=$?
+				exit_on_error "$ERROR_TMP" "$sample_dir_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+	    		echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR last batch directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	    	fi  
 		fi
-	    fi
-	elif [[ "$s" -eq "${#subdirs[@]}" ]]; then
-	    last=TRUE
-	    echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating last batch sample directory: $CURRENT_BATCH_SUBDIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
-	    if [[ -d $CURRENT_BATCH_SUBDIR ]]; then
-		echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR last batch directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	    else
-		mkdir $CURRENT_BATCH_SUBDIR 2>$ERROR_TMP
-		if [[ $? -ne 0 ]]; then
-		    echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] Failed Sample output directory, $CURRENT_BATCH_SUBDIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-		    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-		    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-		    exit 126
-		else
-		    echo "$(date '+%Y_%m_%d %T') [Batch mode: sample output directory] OK $CURRENT_BATCH_SUBDIR last batch directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-		fi
-	    fi  
-	fi
 
-	# Get forward and reverse fastq files for current batch sample subdir
-	echo "$(date '+%Y_%m_%d %T') [Batch mode] Listing forward and reverse fastq files in ${subdirs[$si]} current batch sample directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	fastq_files=($(ls "${subdirs[$si]}" | egrep -v "_single_" | egrep ".*.fastq$" 2>$ERROR_TMP))
-	echo -e "fastq files count: ${#fastq_files[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
-	echo -e "fastq files list: ${fastq_files[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
-	forward_fastq=$(for f in "${fastq_files[@]}"; do 
-	m=$(echo $f | egrep "_[0-9]+_1_" 2>>$ERROR_TMP); if [[ -n $m ]]; then echo $m; break; fi
-	done)
-	reverse_fastq=$(for f in "${fastq_files[@]}"; do 
-	m=$(echo $f | egrep "_[0-9]+_2_" 2>>$ERROR_TMP); if [[ -n $m ]]; then echo $m; break; fi
-	done 2>>$ERROR_TMP)
-	if [[ -s $ERROR_TMP ]]; then
-		 echo "$(date '+%Y_%m_%d %T') [Batch mode] Failed An error occured while listing forward and reverse fastq files in ${subdirs[$si]} current batch sample directory." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-		echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline" | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-		echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1			
-	else
-		echo -e "forward fastq file: $forward_fastq" | tee -a $LOG_DIR/$LOGFILE 2>&1
-		echo -e "reverse fastq file: $reverse_fastq" | tee -a $LOG_DIR/$LOGFILE 2>&1
-	fi		
-
-
-        # 1.4 Create Quality control and trimming sub-subdir: fastqc and trimmomatic, optional step
-	#VARCO_QC_TRIM_process=TRUE # for testing purpose	
-	if [[ $VARCO_QC_TRIM_process == "TRUE" ]]; then
-	     echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating quality control and trimming sub-directory: $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
-	     if [[ -d $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR ]]; then
-	 	echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	     else
-	 	mkdir $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR 2>$ERROR_TMP
-	 	if [[ $? -ne 0 ]]; then
-	 	    echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] Failed Quality control and Trimming output directory, $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	 	    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	 	    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	 	    exit 126
-	 	else
-	 	    echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	 	fi
-	     fi 
-             # 1.4.1 Quality control on raw data, before trimming
-
-	     # 1.4.2 Trimming on raw data 
-
-	     # 1.4.3 Quality control on trimmed data, after trimming
+	# 1.3.2 Get forward and reverse fastq files for current batch sample subdir
+		echo "$(date '+%Y_%m_%d %T') [Batch mode] Listing forward and reverse fastq files in ${subdirs[$si]} current batch sample directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		fastq_files=($(ls "${subdirs[$si]}" | egrep -v "_single_" | egrep ".*.fastq$" 2>$ERROR_TMP))
+		rtrn=$?
+		fastq_list_failed_msg="[Batch mode] Failed An error occured while listing forward and reverse fastq files in ${subdirs[$si]} current batch sample directory."
+		exit_on_error "$ERROR_TMP" "$fastq_list_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] fastq files count: ${#fastq_files[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] fastq files list: ${fastq_files[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		getFastqFile()
+		{
+			direction=$1
+			for f in "${fastq_files[@]}"; do 
+				m=$(echo $f | egrep "_[0-9]+_${direction}_" 2>$ERROR_TMP); if [[ -n $m ]]; then echo $m; break; fi
+			done
+		}
+		fastq_file_failed_msg="[Batch mode] Failed An error occured while getting forward/reverse fastq files in ${subdirs[$si]} current batch sample directory."		
+		forward_fastq=$(getFastqFile 1)
+		rtrn=$?
+		exit_on_error "$ERROR_TMP" "$fastq_file_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+		reverse_fastq=$(getFastqFile 2)
+		rtrn=$?
+		exit_on_error "$ERROR_TMP" "$fastq_file_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 	
-             # 1.4.4 Set forward and reverse fastq files for mapping step
-	     forward_fastq=trimmed_forward_fastq
-	     reverse_fastq=trimmed_reverse_fastq
-	 fi
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] forward fastq file: $forward_fastq" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] reverse fastq file: $reverse_fastq" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		
+	# 1.3.3 Get current sample name
+		echo "$(date '+%Y_%m_%d %T') [Batch mode] Getting sample name for ${subdirs[$si]} current batch sample directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		sample_name=$(getFastqSampleName $forward_fastq 2>$ERROR_TMP)
+		rtrn=$?
+		fastq_sample_name_failed_msg="[Batch mode] Failed An error occured while getting sample name for ${subdirs[$si]} current batch sample directory."
+		exit_on_error "$ERROR_TMP" "$fastq_sample_name_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] OK Current sample name: $sample_name" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
-        # 1.5 Create a mapping sub-subdir for each sample
-	 echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating mapping sub-directory: $CURRENT_BATCH_SUBDIR/$MAPPING_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
-	 if [[ -d $CURRENT_BATCH_SUBDIR/$MAPPING_DIR ]]; then
-	     echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping output directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	 else
-	     mkdir $CURRENT_BATCH_SUBDIR/$MAPPING_DIR 2>$ERROR_TMP
-	     if [[ $? -ne 0 ]]; then
-	 	echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping output directory] Failed Mapping output directory, $CURRENT_BATCH_SUBDIR/$MAPPING_DIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	 	echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	 	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	 	exit 126
-	     else
-	 	echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping output directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	     fi
-	 fi
-	
-	# 1.5.1 Build mapper command
-
-
-
-
-
+	# 1.3.4 Save fastq infos to config file
+		echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Saving sample infos for ${subdirs[$si]} current batch sample directory ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+		sample_config_file=$CURRENT_BATCH_SUBDIR/sample.config
+		echo -e "[sample]" 2>$ERROR_TMP >$sample_config_file
+		echo -e "name=${sample_name}" 2>>$ERROR_TMP >>$sample_config_file
+		echo -e "fastq_forward=${forward_fastq}" 2>>$ERROR_TMP >>$sample_config_file
+		echo -e "fastq_reverse=${reverse_fastq}" 2>>$ERROR_TMP >>$sample_config_file
+		echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] sample config file:" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(cat $sample_config_file)" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	# Last batch sample: have a break!
-	[[ $last == "TRUE" ]] && break
-    done
+		[[ $last == "TRUE" ]] && break
+	done
+
+
+
+
+
+
+
+
+
+
+
+#	# 1.4 Create Quality control and trimming sub-subdir: fastqc and trimmomatic, optional step
+#	#VARCO_QC_TRIM_process=TRUE # for testing purpose	
+#	if [[ $VARCO_QC_TRIM_process == "TRUE" ]]; then
+#		echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating quality control and trimming sub-directory: $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
+#		if [[ -d $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR ]]; then
+#			echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#		else
+#			mkdir $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR 2>$ERROR_TMP
+#			if [[ $? -ne 0 ]]; then
+#				echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] Failed Quality control and Trimming output directory, $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+#				echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+#				echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#				exit 126
+#			else
+#				echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#			fi
+#		fi 
+#		# 1.4.1 Quality control on raw data, before trimming
+
+#		# 1.4.2 Trimming on raw data 
+
+#		# 1.4.3 Quality control on trimmed data, after trimming
+#	
+#		# 1.4.4 Set forward and reverse fastq files for mapping step
+#		forward_fastq=trimmed_forward_fastq
+#		reverse_fastq=trimmed_reverse_fastq
+#	fi
+
+#	# 1.5 Create a mapping sub-subdir
+#	echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating mapping sub-directory: $CURRENT_BATCH_SUBDIR/$MAPPING_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
+#	if [[ -d $CURRENT_BATCH_SUBDIR/$MAPPING_DIR ]]; then
+#		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping output directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#	else
+#		mkdir $CURRENT_BATCH_SUBDIR/$MAPPING_DIR 2>$ERROR_TMP
+#		if [[ $? -ne 0 ]]; then
+#		 	echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping output directory] Failed Mapping output directory, $CURRENT_BATCH_SUBDIR/$MAPPING_DIR was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+#			echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+#			echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#			exit 126
+#		else
+#	 		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping output directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#		fi
+#	fi
+
+#	# 1.5.1 Create mapping subdirs
+#	mapping_subdirs=("tmp" "log")
+#	for msd in "${mapping_subdirs[@]}"; do
+#	echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating mapping sub-sub-directory: $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd" | tee -a $LOG_DIR/$LOGFILE 2>&1
+#	if [[ -d $CURRENT_BATCH_SUBDIR/$MAPPING_DIR ]]; then
+#		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping $msd directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd directory already exists. Will write $msd output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#	else
+#		mkdir $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd 2>$ERROR_TMP
+#		if [[ $? -ne 0 ]]; then
+#		 	echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping $msd directory] Failed Mapping $msd output directory, $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+#			echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+#			echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#			exit 126
+#		else
+#	 		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping $msd directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd directory was created successfully. Will write $msd output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#		fi
+#	fi		
+#	done
+
+#	# current mapping directories
+#	CURRENT_MAPPING_DIR=$CURRENT_BATCH_SUBDIR/$MAPPING_DIR	
+#	CURRENT_MAPPING_TMP=$CURRENT_MAPPING_DIR/tmp
+#	CURRENT_MAPPING_LOG=$CURRENT_MAPPING_DIR/log
+#	# current mapping files
+#	CURRENT_MAPPING_ERROR=$CURRENT_MAPPING_TMP/error_mapping_b$b\_s$s\_$LOGFILE
+#	CURRENT_MAPPING_LOGFILE=$CURRENT_MAPPING_LOG/mapping_b$b\_s$s\_$LOGFILE
+
+#	# 1.5.2 Build gsnap mapper command
+#	echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Building mapping command line options for current batch sample $CURRENT_BATCH_SUBDIR ..." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1	
+#	gsnap_cli_options=($(buildCommandLineOptions gsnap $NAMESPACE 2>>$CURRENT_MAPPING_ERROR))
+#	rtrn=$?
+#	if [[ $rtrn -ne 0 ]]; then
+#		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Failed An error occured while building the mapping command line for current batch sample $CURRENT_BATCH_SUBDIR." | tee -a $ERROR_TMP 2>&1 | tee -a $CURRENT_MAPPING_ERROR 2>&1 | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+#		echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $CURRENT_MAPPING_ERROR 2>&1 | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+#		echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $CURRENT_MAPPING_ERROR." | tee -a $ERROR_TMP 2>&1 | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+#		exit $rtrn			
+#	else
+#		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] OK Successfully build mapping command line options for current batch sample $CURRENT_BATCH_SUBDIR." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+#	fi
+#	gsnap_out=$CURRENT_SAMPLE_NAME\_gsnap_out_b$b\_s$s.sam	
+#	gsnap_cli="gsnap $gsnap_cli_options $forward_fastq $reverse_fastq > $gsnap_out"
+#	
+#	# 1.5.2 Run the command	
+#	echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Executing mapping command line for current batch sample  $CURRENT_BATCH_SUBDIR ..." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1  2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+#	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Mapper \n$MAPPER_VERSION" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1 
+#	eval "$gsnap_cli" 2>$CURRENT_MAPPING_ERROR &
+
+
+#	# get the pid and push it to the pids array	
+#	pid=$!
+
+#	# Last batch sample: have a break!
+#	[[ $last == "TRUE" ]] && break
+#    done
+
+#	# Run all mapping jobs then wait for these jobs to finish before running sam conversion to sorted bam files
+#	# Check for errors in tmp directories, if exist if not empty    
+
+#	# 1.6  Convert sam to sorted bam
+#	last=FALSE
+#    for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
+#	si=$[$s-1]
+#	sdi=$[$si+$b*$VARCO_SPLIT_MAP_batch_size]
+#	echo -e "$sdi, $si: ${subdirs[$si]}"
+#	CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename "${subdirs[$si]}")
+#	if [[ "$s" -eq "${#subdirs[@]}" ]]; then
+#	    last=TRUE
+#	fi
+
+#	# 1.6.1 Build samtools view command
+# 
+#	#.1.6.2 Run the command
+
+#	# 1.6.3 Build samtools sort command
+
+#	# 1.6.4 Run the command
+
+#	# 1.6.5 Build samtools index command
+#	
+#	# 1.6.6 Run the command
+
+
 
     # Unshifting the current batch samples from fastq subdirs array
-    echo -e "remaining subdirs count before unshifting: ${#subdirs[@]}" >> $LOG_DIR/$LOGFILE 2>&1
+    echo -e "$(date '+%Y_%m_%d %T') [Batch mode] remaining subdirs count before unshifting: ${#subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
     #echo -e "batch_size - 1: $[$VARCO_SPLIT_MAP_batch_size -1]" >> $LOG_DIR/$LOGFILE 2>&1 # for testing purpose
     for i in $(seq 0 $[$VARCO_SPLIT_MAP_batch_size -1]); do
-	# echo -e $i >> $LOG_DIR/$LOGFILE 2>&1 # for testing purpose
-	if [[ "${#subdirs[@]}" -ge "$i" ]]; then # weird, this condition does not get the last array element to be unshifted
-	    unset subdirs[$i]
-	fi
-	[[ -n "${subdirs[$i]}" ]] && unset subdirs[$i] # don't know why but when get to the last array element, need to force unshifting
-	#echo -e "${subdirs[$i]}" >> $LOG_DIR/$LOGFILE 2>&1 # for testing purpose
+		# echo -ne $i >> $LOG_DIR/$LOGFILE 2>&1 # for testing purpose
+		if [[ "${#subdirs[@]}" -ge "$i" ]]; then # weird, this condition does not get the last array element to be unshifted
+	    	unset subdirs[$i]
+		fi
+		[[ -n "${subdirs[$i]}" ]] && unset subdirs[$i] # don't know why but when get to the last array element, need to force unshifting
+		#echo -e "${subdirs[$i]}" >> $LOG_DIR/$LOGFILE 2>&1 # for testing purpose
     done
     subdirs=("${subdirs[@]}")
-    echo -e "remaining subdirs count after unshifting: ${#subdirs[@]}" >> $LOG_DIR/$LOGFILE 2>&1
-    echo -e "remaining subdirs list after unshifting: ${subdirs[@]}" >> $LOG_DIR/$LOGFILE 2>&1
+    echo -e "$(date '+%Y_%m_%d %T') [Batch mode] remaining subdirs count after unshifting: ${#subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo -e "$(date '+%Y_%m_%d %T') [Batch mode] remaining subdirs list after unshifting: ${subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
     # Wait until the last current batch sample finish before launching the next batch
 
@@ -626,11 +744,13 @@ done
 #
 
 # unset environment variables with used namespace
+echo -ne "$(date '+%Y_%m_%d %T') [Cleaning] Unsetting all environment variables using namespace: $NAMESPACE ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 unset $(set | awk -F= -v cfg="${cfg}" -v prefix="${NAMESPACE}" 'BEGIN { 
           cfg = toupper(cfg);
           prefix = toupper(prefix);
        }
        /^prefix_cfg_/  { print $1 }') $(toupper ${prefix}_${cfg}_)
+echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 #=====
 # END
