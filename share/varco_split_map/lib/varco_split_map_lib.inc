@@ -117,6 +117,27 @@ set_config_params()
 }
 
 #-------------------------------------------------------------------------
+# Function : getFastqSampleName $fastq_file
+# Purpose  : parse the sample name in fastq file removing the forward/reverse index ("_(1|2)_")
+getFastqSampleName()
+{
+	fastq_file=$1
+	echo "$fastq_file" | gawk '
+	    function getSampleName(str) {
+              sample="";
+              while(match(str, /^(.*_[0-9])_[1-2]_(.*).fastq$/, a)) 
+              {
+                sample=a[1]"_"a[2];
+                str = substr(str, RSTART+RLENGTH)
+              }
+              print sample;
+            }
+            {
+              getSampleName($0)
+            }'
+}
+
+#-------------------------------------------------------------------------
 # Function : waitall $pids_array
 # Purpose  : wait for all child processes to finish and log their exit status
 waitall() {
