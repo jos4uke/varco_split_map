@@ -26,7 +26,7 @@ DEV_PREFIX="$(pwd)/.."
 PREFIX=$DEV_PREFIX # TO BE CHANGED WHEN SWITCHING TO PROD
 . $PREFIX/share/varco_split_map/lib/varco_split_map_lib.inc
 
-# Positionnement des variables
+# Set variables
 
 ARGS=2
 DATA_ROOT_DIR=$1
@@ -42,10 +42,13 @@ PROD_VARCO_SPLIT_MAP_USER_CONFIG=$WORKING_DIR/$(basename ${0%.*})_user.config
 DEV_VARCO_SPLIT_MAP_USER_CONFIG=$VARCO_SPLIT_MAP_SHARED/etc/$(basename ${0%.*})_user.config
 VARCO_SPLIT_MAP_USER_CONFIG=$PROD_VARCO_SPLIT_MAP_USER_CONFIG # TO BE CHANGED WHEN SWITCHING TO PROD
 VARCO_SPLIT_MAP_USER_CONFIG_JOB=$WORKING_DIR/$JOB_TAG/${JOB_TAG}_$(basename ${0%.*})_user.config
+SAMPLE_CONFIG=sample.config
 
 MAX_NUMB_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 MAX_NUMB_CORES_ALLOWED=$[$MAX_NUMB_CORES/2]
 MAX_BATCH_SIZE=0
+
+PIDS_ARR=()
 
 LOG_DIR=$JOB_TAG/"log"
 QC_TRIM_DIR="QC_TRIM"
@@ -215,6 +218,20 @@ fi
 #
 # Test for cpu average load: TODO
 # cf lib for a function to tell if average cpu load is ok else wait a minute
+echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Checking for average cpu load before running on samples batch #$[$b+1] ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+# cat /proc/loadavg # avg1 avg5 avg10 running_threads/total_threads last_running_pid
+echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+
+#
+# Test for disk space: TODO
+# do it after loading config parameters to evaluate the used disk space for raw data (all subdirs with fastq files) 
+# if available disk space lower than raw data used disk space, then abort
+#echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
+#avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
+echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Checking for available disk space before running on samples batch #$[$b+1] ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+#echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
+#avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
+echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 #
 # Check for DATA_ROOT_DIR existence
@@ -282,7 +299,7 @@ fi
 #
 # Check for parameters validity
 # cf lib implement a function to check for config parameters validity: TODO
-#
+# check only internal pipeline config params not vendor config params
 
 #
 # Override  defined batch_size:
@@ -414,15 +431,6 @@ fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
 	echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Warning More details about discarded subdirectories can be found in $LOG_DIR/$LOGFILE" | tee -a $LOG_DIR/$LOGFILE 2>&1
     fi
 
-
-#
-# Test for disk space: TODO
-# do it after loading config parameters to evaluate the used disk space for raw data (all subdirs with fastq files) 
-# if available disk space lower than raw data used disk space, then abort
-#echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
-#avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
-
-
 #
 # Batch mode:
 # 1. Iterate over batches
@@ -456,7 +464,7 @@ echo "$(date '+%Y_%m_%d %T') [Batch mode] Running batch mode on fastq subdirs ..
 unsorted_subdirs=("${fastq_subdirs[@]}")
 readarray -t subdirs < <(printf '%s\0' "${unsorted_subdirs[@]}" | sort -z | xargs -0n1)
 
-# Computing number of batches expected to run
+# Computing number of batches expected to be run
 ## if #subdirs <= batch_size then #batches=1
 ## if #subdirs > batch_size then #batches=ceil(#subdirs/batch_size)
 echo "$(date '+%Y_%m_%d %T') [Batch mode] Computing number of batches to run ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -464,18 +472,22 @@ if [[ "${#subdirs[@]}" -le "$VARCO_SPLIT_MAP_batch_size" ]]; then
 	batches=1
 else
 	batches=$(echo "${#subdirs[@]} $VARCO_SPLIT_MAP_batch_size" | awk '{print int( ($1/$2) + 1 )}' 2>ERROR_TMP)
+	rtrn=$?
+	batches_failed_msg="[Batch mode] Failed computing the number of batches expected to be run."
+	exit_on_error "$ERROR_TMP" "$batches_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 fi
-echo "$(date '+%Y_%m_%d %T') [Batch mode] $batches batche(s) expected to be run." | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo "$(date '+%Y_%m_%d %T') [Batch mode] $batches computed batche(s) expected to be run." | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 # 1. Iterate over batches
 for b in $(seq 0 $[ $batches-1 ]); do
 
-    # 1.1 Test for average cpu load and available disk space: TODO
-    echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Testing for average cpu load before running on samples batch #$[$b+1] ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+    # 1.1 Test for average cpu load: TODO
+    echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Checking for average cpu load before running on samples batch #$[$b+1] ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+	# cat /proc/loadavg # avg1 avg5 avg10 running_threads/total_threads last_running_pid
 	echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	
     # 1.2 Test for available disk space: TODO
-	echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Testing for available disk space before running on samples batch #$[$b+1] ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Checking for available disk space before running on samples batch #$[$b+1] ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 	#echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	#avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
 	echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -549,7 +561,7 @@ for b in $(seq 0 $[ $batches-1 ]); do
 
 	# 1.3.4 Save fastq infos to config file
 		echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Saving sample infos for ${subdirs[$si]} current batch sample directory ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
-		sample_config_file=$CURRENT_BATCH_SUBDIR/sample.config
+		sample_config_file=$CURRENT_BATCH_SUBDIR/$SAMPLE_CONFIG
 		echo -e "[sample]" 2>$ERROR_TMP >$sample_config_file
 		echo -e "name=${sample_name}" 2>>$ERROR_TMP >>$sample_config_file
 		echo -e "fastq_forward=${forward_fastq}" 2>>$ERROR_TMP >>$sample_config_file
@@ -561,43 +573,142 @@ for b in $(seq 0 $[ $batches-1 ]); do
 		[[ $last == "TRUE" ]] && break
 	done
 
+	# 1.4 Iterate over quality control and trimming commands: optional step TODO
+	qc_cmd="fastqc"
+	trimming_cmd="trimmomatic"
+	qc_trim_cmds=("$qc_cmd" "$trimming_cmd" "$qc_cmd")
+	trimmed=FALSE
+
+	#VARCO_QC_TRIM_process=TRUE # for testing purpose
+	if [[ $VARCO_QC_TRIM_process == "TRUE" ]]; then
+
+	# Iterate over qc_trim_cmds
+	for cmd in "${qc_trim_cmds[@]}"; do
+		last=FALSE 	# for last batch sample
+    	echo "$(date '+%Y_%m_%d %T') [Batch mode] Running quality control and trimming on samples batch #$[$b+1] ..." | tee -a $LOG_DIR/$LOGFILE 2>&1 
+
+	# reinitiate pids array
+		PIDS_ARR=()
+  
+	# Iterate over batch samples for current quality control and trimming command
+    	for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
+			si=$[$s-1]
+			sdi=$[$si+$b*$VARCO_SPLIT_MAP_batch_size]
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] Processing batch sample $sdi, $si: ${subdirs[$si]}, for quality control and trimming ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+			CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename "${subdirs[$si]}")
+			CURRENT_SAMPLE_CONFIG=$CURRENT_BATCH_SUBDIR/$SAMPLE_CONFIG
+
+	# load sample config
+			echo "$(date '+%Y_%m_%d %T') [Batch mode] Loading sample config for $CURRENT_SAMPLE_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+			sample_config_failed_msg="[Batch mode] Failed loading sample config file, $CURRENT_SAMPLE_CONFIG, from $CURRENT_BATCH_SUBDIR"
+			for cfg in $(get_config_sections $CURRENT_SAMPLE_CONFIG 2>$ERROR_TMP; rtrn=$?); do
+				if [[ "$rtrn" -eq 0 ]]; then
+    				echo -e "--- Config section [${cfg}] ---"
+    				unset $(set | awk -F= -v cfg="${cfg}" -v prefix="${NAMESPACE}" 'BEGIN { 
+          				cfg = toupper(cfg);
+          				prefix = toupper(prefix);
+       					}
+       					/^prefix_cfg_/  { print $1 }' 2>$ERROR_TMP) $(toupper ${NAMESPACE}_${cfg}_) 2>>$ERROR_TMP
+					rtrn=$?
+					exit_on_error "$ERROR_TMP" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+    				set_config_params $CURRENT_SAMPLE_CONFIG ${cfg} ${NAMESPACE} 2>$ERROR_TMP
+    				rtrn=$?
+					exit_on_error "$ERROR_TMP" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE" 
+    				for params in $(set | grep ^$(toupper ${NAMESPACE}_${cfg}_) 2>$ERROR_TMP); do
+						echo -e "$params"
+    				done
+				else
+					exit_on_error "$ERROR_TMP" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+				fi
+			done
+
+	# 1.4.1 Create Quality control and trimming sub-subdir: fastqc and trimmomatic, 
+			echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating quality control and trimming sub-directory: $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+			CURRENT_QCTRIM_LOG=$CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR/qc_trim.log
+			CURRENT_QCTRIM_ERR=$CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR/qc_trim_err.log
+			if [[ -d $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR ]]; then
+				echo "$(date '+%Y_%m_%d %T') [Batch mode: Quality Control and Trimming] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory already exists. Will write output files in this directory." | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			else
+				mkdir $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR 2>$ERROR_TMP
+				rtrn=$?
+				qctrim_dir_failed_msg="[Batch mode] Failed Quality control and Trimming output directory, $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR, was not created."
+				exit_on_error "$ERROR_TMP" "$qctrim_dir_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+				echo "$(date '+%Y_%m_%d %T') [Batch mode] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory was created successfully. Will write output files in this directory." | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			fi 
+	
+	# Build cli for the 3 cases: in fact 2 cases 1) fastqc with a) before trimming and b) after trimming 2) trimmomatic
+	# 1.4.1 Quality control, 
+	# 1.4.1.a before trimming (raw data): TODO
+	# 1.4.1.b after trimming (trimmed data): TODO
+ 
+	# 1.4.2 Trimming on raw data: TODO
+	# ${forward_fastq_both_surviving}
+	# ${reverse_fastq_both_surviving}
+	# ${forward_fastq_only_surviving}
+	# ${reverse_fastq_only_surviving}
+
+	# Run the cli
+	
+	# Last batch sample: have a break!
+			[[ $last == "TRUE" ]] && break
+		done
+
+	# waitall: TODO
+	# several commands to wait: fastqc (trimmed=FALSE), trimmomatic, fastqc (trimmed=TRUE)
 
 
+	# check for errors: TODO
+	# for trimming, 
+	# set trimmed to TRUE if ok
+	# set forward and reverse fastq files for mapping step: update the sample config file
+			echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Saving quality control and trimming infos for ${subdirs[$si]} current batch sample directory ... " | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo -e "fastq_forward_trimmed_both_surviving=${forward_fastq_both_surviving}" 2>>$ERROR_TMP >>$CURRENT_SAMPLE_CONFIG
+			echo -e "fastq_reverse_trimmed_both_surviving=${reverse_fastq_both_surviving}" 2>>$ERROR_TMP >>$CURRENT_SAMPLE_CONFIG
+			echo -e "fastq_forward_trimmed_only_surviving=${forward_fastq_only_surviving}" 2>>$ERROR_TMP >>$CURRENT_SAMPLE_CONFIG
+			echo -e "fastq_reverse_trimmed_only_surviving=${reverse_fastq_only_surviving}" 2>>$ERROR_TMP >>$CURRENT_SAMPLE_CONFIG
+			echo -e "done" | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] updated sample config file:" | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo -e "$(cat $sample_config_file)" | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 
+	done
+	fi
 
-
-
-
-
-
-
-#	# 1.4 Create Quality control and trimming sub-subdir: fastqc and trimmomatic, optional step
-#	#VARCO_QC_TRIM_process=TRUE # for testing purpose	
-#	if [[ $VARCO_QC_TRIM_process == "TRUE" ]]; then
-#		echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating quality control and trimming sub-directory: $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
-#		if [[ -d $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR ]]; then
-#			echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-#		else
-#			mkdir $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR 2>$ERROR_TMP
-#			if [[ $? -ne 0 ]]; then
-#				echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] Failed Quality control and Trimming output directory, $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR, was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-#				echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-#				echo "$(date '+%Y_%m_%d %T') [Pipeline error] More information can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-#				exit 126
-#			else
-#				echo "$(date '+%Y_%m_%d %T') [QC and Trimming output directory] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-#			fi
-#		fi 
-#		# 1.4.1 Quality control on raw data, before trimming
-
-#		# 1.4.2 Trimming on raw data 
-
-#		# 1.4.3 Quality control on trimmed data, after trimming
+#	# 1.5 Iterate over batch samples for mapping 
 #	
-#		# 1.4.4 Set forward and reverse fastq files for mapping step
-#		forward_fastq=trimmed_forward_fastq
-#		reverse_fastq=trimmed_reverse_fastq
-#	fi
+#	# reinitiate pids array
+#	PIDS_ARR=()
+
+#	# iterate over batch samples
+#	for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
+#		si=$[$s-1]
+#		sdi=$[$si+$b*$VARCO_SPLIT_MAP_batch_size]
+#		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] Processing batch sample $sdi, $si: ${subdirs[$si]}, for mapping ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+#		CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename "${subdirs[$si]}")
+#		CURRENT_SAMPLE_CONFIG=$CURRENT_BATCH_SUBDIR/$SAMPLE_CONFIG
+
+#	# load sample config
+#		echo "$(date '+%Y_%m_%d %T') [Batch mode] Loading sample config for $CURRENT_SAMPLE_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+#		sample_config_failed_msg="[Batch mode] Failed loading sample config file, $CURRENT_SAMPLE_CONFIG, from $CURRENT_BATCH_SUBDIR"
+#		for cfg in $(get_config_sections $CURRENT_SAMPLE_CONFIG 2>$ERROR_TMP; rtrn=$?); do
+#			if [[ "$rtrn" -eq 0 ]]; then
+#				echo -e "--- Config section [${cfg}] ---"
+#				unset $(set | awk -F= -v cfg="${cfg}" -v prefix="${NAMESPACE}" 'BEGIN { 
+#	  				cfg = toupper(cfg);
+#	  				prefix = toupper(prefix);
+#					}
+#					/^prefix_cfg_/  { print $1 }' 2>$ERROR_TMP) $(toupper ${NAMESPACE}_${cfg}_) 2>>$ERROR_TMP
+#				rtrn=$?
+#				exit_on_error "$ERROR_TMP" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+#				set_config_params $CURRENT_SAMPLE_CONFIG ${cfg} ${NAMESPACE} 2>$ERROR_TMP
+#				rtrn=$?
+#				exit_on_error "$ERROR_TMP" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE" 
+#				for params in $(set | grep ^$(toupper ${NAMESPACE}_${cfg}_) 2>$ERROR_TMP); do
+#					echo -e "$params"
+#				done
+#			else
+#				exit_on_error "$ERROR_TMP" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+#			fi
+#		done
 
 #	# 1.5 Create a mapping sub-subdir
 #	echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating mapping sub-directory: $CURRENT_BATCH_SUBDIR/$MAPPING_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -605,6 +716,7 @@ for b in $(seq 0 $[ $batches-1 ]); do
 #		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping output directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 #	else
 #		mkdir $CURRENT_BATCH_SUBDIR/$MAPPING_DIR 2>$ERROR_TMP
+#		
 #		if [[ $? -ne 0 ]]; then
 #		 	echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping output directory] Failed Mapping output directory, $CURRENT_BATCH_SUBDIR/$MAPPING_DIR was not created." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 #			echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -669,6 +781,7 @@ for b in $(seq 0 $[ $batches-1 ]); do
 #	# Last batch sample: have a break!
 #	[[ $last == "TRUE" ]] && break
 #    done
+#	done
 
 #	# Run all mapping jobs then wait for these jobs to finish before running sam conversion to sorted bam files
 #	# Check for errors in tmp directories, if exist if not empty    
