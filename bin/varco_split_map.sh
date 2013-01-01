@@ -219,7 +219,7 @@ fi
 #
 # Test for cpu average load: TODO
 # cf lib for a function to tell if average cpu load is ok else wait a minute
-echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Checking for average cpu load before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 # http://blog.scoutapp.com/articles/2009/07/31/understanding-load-averages
 # average load should be under at most the total #cores or as stated the total allowed #cores# cat /proc/loadavg # avg1 avg5 avg10 running_threads/total_threads last_running_pid
 echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -230,7 +230,7 @@ echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 # if available disk space lower than raw data used disk space, then abort
 #echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
 #avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
-echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Checking for available disk space before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -ne "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 #echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
 #avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
 echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -484,14 +484,14 @@ echo "$(date '+%Y_%m_%d %T') [Batch mode] $batches computed batche(s) expected t
 for b in $(seq 1 $[ $batches ]); do
 
     # 1.1 Test for average cpu load: TODO
-    echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Checking for average cpu load before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+    echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 	# http://blog.scoutapp.com/articles/2009/07/31/understanding-load-averages
 	# average load should be under at most the total #cores or as stated the total allowed #cores
 	# cat /proc/loadavg # avg1 avg5 avg10 running_threads/total_threads last_running_pid
 	echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	
     # 1.2 Test for available disk space: TODO
-	echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Checking for available disk space before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -ne "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 	#echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	#avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
 	echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -501,7 +501,7 @@ for b in $(seq 1 $[ $batches ]); do
     echo "$(date '+%Y_%m_%d %T') [Batch mode] Running batch mode on samples batch #$b ..." | tee -a $LOG_DIR/$LOGFILE 2>&1   
     for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
 		si=$[$s-1]
-		sdi=$[$si+$b*$VARCO_SPLIT_MAP_batch_size]
+		sdi=$[$si+($b-1)*$VARCO_SPLIT_MAP_batch_size]
 		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] Processing batch sample $sdi, $si: ${subdirs[$si]}"
 		CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename "${subdirs[$si]}")
 		sample_dir_failed_msg="[Batch mode: sample output directory] Failed Sample output directory, $CURRENT_BATCH_SUBDIR, was not created."
@@ -589,7 +589,7 @@ for b in $(seq 1 $[ $batches ]); do
 	# Iterate over qc_trim_cmds
 	for cmd in "${qc_trim_cmds[@]}"; do
 		last=FALSE 	# for last batch sample
-    	echo "$(date '+%Y_%m_%d %T') [Batch mode] Running quality control and trimming on samples batch #$b ..." | tee -a $LOG_DIR/$LOGFILE 2>&1 
+    	echo "$(date '+%Y_%m_%d %T') [Batch mode: quality control and trimming] Running quality control and trimming on samples batch #$b ..." | tee -a $LOG_DIR/$LOGFILE 2>&1 
 
 	# reinitiate pids array
 		PIDS_ARR=()
@@ -597,8 +597,8 @@ for b in $(seq 1 $[ $batches ]); do
 	# Iterate over batch samples for current quality control and trimming command
     	for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
 			si=$[$s-1]
-			sdi=$[$si+$b*$VARCO_SPLIT_MAP_batch_size]
-			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] Processing batch sample $sdi, $si: ${subdirs[$si]}, for quality control and trimming ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+			sdi=$[$si+($b-1)*$VARCO_SPLIT_MAP_batch_size]
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode: quality control and trimming] Processing batch sample $sdi, $si: ${subdirs[$si]}, for quality control and trimming ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 			CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename "${subdirs[$si]}")
 			CURRENT_SAMPLE_CONFIG=$CURRENT_BATCH_SUBDIR/$SAMPLE_CONFIG
 			
@@ -606,8 +606,8 @@ for b in $(seq 1 $[ $batches ]); do
 	[[ "$s" -eq "${#subdirs[@]}" ]] && last=TRUE
 
 	# load sample config
-			echo "$(date '+%Y_%m_%d %T') [Batch mode] Loading sample config for $CURRENT_SAMPLE_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
-			sample_config_failed_msg="[Batch mode] Failed loading sample config file, $CURRENT_SAMPLE_CONFIG, from $CURRENT_BATCH_SUBDIR"
+			echo "$(date '+%Y_%m_%d %T') [Batch mode: quality control and trimming] Loading sample config for $CURRENT_SAMPLE_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+			sample_config_failed_msg="[Batch mode: quality control and trimming] Failed loading sample config file, $CURRENT_SAMPLE_CONFIG, from $CURRENT_BATCH_SUBDIR"
 			for cfg in $(get_config_sections $CURRENT_SAMPLE_CONFIG 2>$ERROR_TMP; rtrn=$?); do
 				if [[ "$rtrn" -eq 0 ]]; then
     				echo -e "--- Config section [${cfg}] ---"
@@ -630,17 +630,17 @@ for b in $(seq 1 $[ $batches ]); do
 			done
 
 	# 1.4.1 Create Quality control and trimming sub-subdir: fastqc and trimmomatic, 
-			echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating quality control and trimming sub-directory: $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo "$(date '+%Y_%m_%d %T') [Batch mode: quality control and trimming] Creating quality control and trimming sub-directory: $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 			CURRENT_QCTRIM_LOG=$CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR/qc_trim.log
 			CURRENT_QCTRIM_ERR=$CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR/qc_trim_err.log
 			if [[ -d $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR ]]; then
-				echo "$(date '+%Y_%m_%d %T') [Batch mode: Quality Control and Trimming] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory already exists. Will write output files in this directory." | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+				echo "$(date '+%Y_%m_%d %T') [Batch mode: quality control and trimming: Quality Control and Trimming] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory already exists. Will write output files in this directory." | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 			else
 				mkdir $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR 2>$ERROR_TMP
 				rtrn=$?
-				qctrim_dir_failed_msg="[Batch mode] Failed Quality control and Trimming output directory, $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR, was not created."
+				qctrim_dir_failed_msg="[Batch mode: quality control and trimming] Failed Quality control and Trimming output directory, $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR, was not created."
 				exit_on_error "$ERROR_TMP" "$qctrim_dir_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
-				echo "$(date '+%Y_%m_%d %T') [Batch mode] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory was created successfully. Will write output files in this directory." | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+				echo "$(date '+%Y_%m_%d %T') [Batch mode: quality control and trimming] OK $CURRENT_BATCH_SUBDIR/$QC_TRIM_DIR directory was created successfully. Will write output files in this directory." | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 			fi 
 	
 	# Build cli for the 3 cases: in fact 2 cases 1) fastqc with a) before trimming and b) after trimming 2) trimmomatic
@@ -668,13 +668,13 @@ for b in $(seq 1 $[ $batches ]); do
 	# for trimming, 
 	# set trimmed to TRUE if ok
 	# set forward and reverse fastq files for mapping step: update the sample config file
-			echo -ne "$(date '+%Y_%m_%d %T') [Batch mode] Saving quality control and trimming infos for ${subdirs[$si]} current batch sample directory ... " | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo -ne "$(date '+%Y_%m_%d %T') [Batch mode: quality control and trimming] Saving quality control and trimming infos for ${subdirs[$si]} current batch sample directory ... " | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 			echo -e "fastq_forward_trimmed_both_surviving=${forward_fastq_both_surviving}" 2>>$ERROR_TMP >>$CURRENT_SAMPLE_CONFIG
 			echo -e "fastq_reverse_trimmed_both_surviving=${reverse_fastq_both_surviving}" 2>>$ERROR_TMP >>$CURRENT_SAMPLE_CONFIG
 			echo -e "fastq_forward_trimmed_only_surviving=${forward_fastq_only_surviving}" 2>>$ERROR_TMP >>$CURRENT_SAMPLE_CONFIG
 			echo -e "fastq_reverse_trimmed_only_surviving=${reverse_fastq_only_surviving}" 2>>$ERROR_TMP >>$CURRENT_SAMPLE_CONFIG
 			echo -e "done" | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] updated sample config file:" | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode: quality control and trimming] updated sample config file:" | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 			echo -e "$(cat $sample_config_file)" | tee -a $CURRENT_QCTRIM_LOG 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 	done
@@ -691,8 +691,8 @@ for b in $(seq 1 $[ $batches ]); do
 	# iterate over batch samples
 	for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
 		si=$[$s-1]
-		sdi=$[$si+$b*$VARCO_SPLIT_MAP_batch_size]
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] Processing batch sample $sdi, $si: ${subdirs[$si]}, for mapping ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+		sdi=$[$si+($b-1)*$VARCO_SPLIT_MAP_batch_size]
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Processing batch sample $sdi, $si: ${subdirs[$si]}, for mapping ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 		CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename "${subdirs[$si]}")
 		CURRENT_SAMPLE_CONFIG=$CURRENT_BATCH_SUBDIR/$SAMPLE_CONFIG
 
@@ -700,8 +700,8 @@ for b in $(seq 1 $[ $batches ]); do
 	[[ "$s" -eq "${#subdirs[@]}" ]] && last=TRUE
 
 	# load sample config
-		echo "$(date '+%Y_%m_%d %T') [Batch mode] Loading sample config for $CURRENT_SAMPLE_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
-		sample_config_failed_msg="[Batch mode] Failed loading sample config file, $CURRENT_SAMPLE_CONFIG, from $CURRENT_BATCH_SUBDIR"
+		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Loading sample config for $CURRENT_SAMPLE_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		sample_config_failed_msg="[Batch mode: mapping] Failed loading sample config file, $CURRENT_SAMPLE_CONFIG, from $CURRENT_BATCH_SUBDIR"
 		for cfg in $(get_config_sections $CURRENT_SAMPLE_CONFIG 2>$ERROR_TMP; rtrn=$?); do
 			if [[ "$rtrn" -eq 0 ]]; then
 				echo -e "--- Config section [${cfg}] ---"
@@ -724,29 +724,29 @@ for b in $(seq 1 $[ $batches ]); do
 		done
 
 	# 1.5 Create a mapping sub-subdir
-		echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating mapping sub-directory: $CURRENT_BATCH_SUBDIR/$MAPPING_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Creating mapping sub-directory: $CURRENT_BATCH_SUBDIR/$MAPPING_DIR" | tee -a $LOG_DIR/$LOGFILE 2>&1
 		if [[ -d $CURRENT_BATCH_SUBDIR/$MAPPING_DIR ]]; then
-			echo "$(date '+%Y_%m_%d %T') [Batch mode] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory already exists. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 		else
 			mkdir $CURRENT_BATCH_SUBDIR/$MAPPING_DIR 2>$ERROR_TMP
 			rtrn=$?
-			mapping_dir_failed_msg="[Batch mode] Failed Mapping output directory, $CURRENT_BATCH_SUBDIR/$MAPPING_DIR was not created."
+			mapping_dir_failed_msg="[Batch mode: mapping] Failed Mapping output directory, $CURRENT_BATCH_SUBDIR/$MAPPING_DIR was not created."
 			exit_on_error "$ERROR_TMP" "$mapping_dir_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
-			echo "$(date '+%Y_%m_%d %T') [Batch mode] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR directory was created successfully. Will write output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 		fi
 
 	# 1.5.1 Create mapping subdirs
 		mapping_subdirs=("tmp" "log")
 		for msd in "${mapping_subdirs[@]}"; do
-			echo "$(date '+%Y_%m_%d %T') [Batch mode] Creating mapping sub-sub-directory: $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd" | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Creating mapping sub-sub-directory: $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd" | tee -a $LOG_DIR/$LOGFILE 2>&1
 			if [[ -d $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd ]]; then
-				echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping $msd directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd directory already exists. Will write $msd output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+				echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping: mapping $msd directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd directory already exists. Will write $msd output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 			else
 				mkdir $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd 2>$ERROR_TMP
 				rtrn=$?
-				mapping_subdir_failed_msg="[Batch mode] Failed Mapping output sub-directory, $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd was not created."
+				mapping_subdir_failed_msg="[Batch mode: mapping] Failed Mapping output sub-directory, $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd was not created."
 				exit_on_error "$ERROR_TMP" "$mapping_subdir_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
-		 		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping $msd directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd directory was created successfully. Will write $msd output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		 		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping: mapping $msd directory] OK $CURRENT_BATCH_SUBDIR/$MAPPING_DIR/$msd directory was created successfully. Will write $msd output files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 			fi		
 		done
 
@@ -763,10 +763,10 @@ for b in $(seq 1 $[ $batches ]); do
 				CURRENT_FASTQ_REVERSE=$VARCO_SAMPLE_fastq_reverse_trimmed_both_surviving
 				CURRENT_SAMPLE_NAME=$VARCO_SAMPLE_name
 			else
-				fastq_files_failed_msg="[Batch mode] Failed loading sample trimmed fastq files variables."
-				echo -e "$(date '+%Y_%m_%d %T') [Batch mode] echo \$VARCO_SAMPLE_fastq_forward_trimmed_both_surviving failed." >$ERROR_TMP
-				echo -e "$(date '+%Y_%m_%d %T') [Batch mode] echo \$VARCO_SAMPLE_fastq_reverse_trimmed_both_surviving failed." >>$ERROR_TMP
-				echo -e "$(date '+%Y_%m_%d %T') [Batch mode] echo \$VARCO_SAMPLE_fastq_name failed." >>$ERROR_TMP
+				fastq_files_failed_msg="[Batch mode: mapping] Failed loading sample trimmed fastq files variables."
+				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] echo \$VARCO_SAMPLE_fastq_forward_trimmed_both_surviving failed." >$ERROR_TMP
+				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] echo \$VARCO_SAMPLE_fastq_reverse_trimmed_both_surviving failed." >>$ERROR_TMP
+				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] echo \$VARCO_SAMPLE_fastq_name failed." >>$ERROR_TMP
 				exit_on_error "$ERROR_TMP" "$fastq_files_failed_msg" 1 "$LOG_DIR/$LOGFILE"
 			fi
 		else
@@ -777,10 +777,10 @@ for b in $(seq 1 $[ $batches ]); do
 				CURRENT_FASTQ_REVERSE=$VARCO_SAMPLE_fastq_reverse
 				CURRENT_SAMPLE_NAME=$VARCO_SAMPLE_name
 			else
-				fastq_files_failed_msg="[Batch mode] Failed loading sample fastq files variables."
-				echo -e "$(date '+%Y_%m_%d %T') [Batch mode] echo \$VARCO_SAMPLE_fastq_forward failed." >$ERROR_TMP
-				echo -e "$(date '+%Y_%m_%d %T') [Batch mode] echo \$VARCO_SAMPLE_fastq_reverse failed." >>$ERROR_TMP
-				echo -e "$(date '+%Y_%m_%d %T') [Batch mode] echo \$VARCO_SAMPLE_fastq_name failed." >>$ERROR_TMP
+				fastq_files_failed_msg="[Batch mode: mapping] Failed loading sample fastq files variables."
+				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] echo \$VARCO_SAMPLE_fastq_forward failed." >$ERROR_TMP
+				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] echo \$VARCO_SAMPLE_fastq_reverse failed." >>$ERROR_TMP
+				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] echo \$VARCO_SAMPLE_fastq_name failed." >>$ERROR_TMP
 				exit_on_error "$ERROR_TMP" "$fastq_files_failed_msg" 1 "$LOG_DIR/$LOGFILE"
 			fi
 		fi
@@ -788,40 +788,40 @@ for b in $(seq 1 $[ $batches ]); do
 		CURRENT_MAPPING_ERROR=$CURRENT_MAPPING_LOG/$CURRENT_SAMPLE_NAME\_mapping_b$b\_s$s\_err.log
 		CURRENT_MAPPING_LOGFILE=$CURRENT_MAPPING_LOG/$CURRENT_SAMPLE_NAME\_mapping_b$b\_s$s.log
 
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] Processing the following fastq sample name: $CURRENT_SAMPLE_NAME" | tee -a ${CURRENT_MAPPING_LOGFILE} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] current sample forward fastq file: $CURRENT_FASTQ_FORWARD" | tee -a ${CURRENT_MAPPING_LOGFILE} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] current sample reverse fastq file: $CURRENT_FASTQ_REVERSE" | tee -a ${CURRENT_MAPPING_LOGFILE} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Processing the following fastq sample name: $CURRENT_SAMPLE_NAME" | tee -a ${CURRENT_MAPPING_LOGFILE} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] current sample forward fastq file: $CURRENT_FASTQ_FORWARD" | tee -a ${CURRENT_MAPPING_LOGFILE} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] current sample reverse fastq file: $CURRENT_FASTQ_REVERSE" | tee -a ${CURRENT_MAPPING_LOGFILE} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 	# 1.5.2 Build gsnap mapper command
 		command_name="gsnap"	
-		echo "$(date '+%Y_%m_%d %T') [Batch mode] Building $command_name mapping command line options for current batch sample $CURRENT_BATCH_SUBDIR ..." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Building $command_name mapping command line options for current batch sample $CURRENT_BATCH_SUBDIR ..." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		echo -e "--- Config section [${command_name}] ---" | tee -a ${CURRENT_MAPPING_LOGFILE} 2>&1
 		for params in $(set | grep ^$(toupper ${NAMESPACE}_${command_name}_)); do
 	    	echo -e "params: $params" | tee -a ${CURRENT_MAPPING_LOGFILE} 2>&1
 		done
 		gsnap_cli_options=($(buildCommandLineOptions $command_name $NAMESPACE 2>$CURRENT_MAPPING_ERROR))
 		rtrn=$?
-		cli_options_failed_msg="[Batch mode] Failed An error occured while building the $command_name mapping command line for current batch sample $CURRENT_SAMPLE_NAME."
+		cli_options_failed_msg="[Batch mode: mapping] Failed An error occured while building the $command_name mapping command line for current batch sample $CURRENT_SAMPLE_NAME."
 		exit_on_error "$CURRENT_MAPPING_ERROR" "$cli_options_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 		opts="${gsnap_cli_options[@]}"
-		echo "$(date '+%Y_%m_%d %T') [Batch mode] OK Successfully build mapping command line options for current batch sample $CURRENT_BATCH_SUBDIR." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Batch mode] $command_name options: $opts" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] OK Successfully build mapping command line options for current batch sample $CURRENT_BATCH_SUBDIR." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] $command_name options: $opts" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 
-		echo "$(date '+%Y_%m_%d %T') [Batch mode] Building $command_name mapping command line for current batch sample $CURRENT_BATCH_SUBDIR ..." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1	
+		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Building $command_name mapping command line for current batch sample $CURRENT_BATCH_SUBDIR ..." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1	
 		gsnap_out=$CURRENT_SAMPLE_NAME\_gsnap_out_b$b\_s$s.sam
 		CURRENT_DATA_SAMPLE_DIR=$DATA_ROOT_DIR/$(basename ${subdirs[$si]})
 		CURRENT_MAPPING_PID=$CURRENT_MAPPING_TMP/$CURRENT_SAMPLE_NAME.pid	
 		gsnap_cli="gsnap $opts $CURRENT_DATA_SAMPLE_DIR/$CURRENT_FASTQ_FORWARD $CURRENT_DATA_SAMPLE_DIR/$CURRENT_FASTQ_REVERSE >$CURRENT_MAPPING_DIR/$gsnap_out 2>${CURRENT_MAPPING_ERROR} &"
 
 	# 1.5.3 Run the command	
-		echo "$(date '+%Y_%m_%d %T') [Batch mode] Executing $command_name mapping command line for current batch sample $CURRENT_BATCH_SUBDIR ..." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1  2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] $command_name mapper version: \n$MAPPER_VERSION" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Executing $command_name mapping command line for current batch sample $CURRENT_BATCH_SUBDIR ..." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1  2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] $command_name mapper version: \n$MAPPER_VERSION" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		eval "$gsnap_cli" 2>$ERROR_TMP
 		pid=$!
 		rtrn=$?
-		eval_failed_msg="[Batch mode] Failed eval gsnap cli."
+		eval_failed_msg="[Batch mode: mapping] Failed eval gsnap cli."
 		exit_on_error "$ERROR_TMP" "$eval_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] $CURRENT_SAMPLE_NAME pid: $pid" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1  2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] $CURRENT_SAMPLE_NAME pid: $pid" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1  2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		echo -e $pid >$CURRENT_MAPPING_PID 2>$ERROR_TMP
 		PIDS_ARR=("${PIDS_ARR[@]}" "$pid")
 
@@ -830,9 +830,9 @@ for b in $(seq 1 $[ $batches ]); do
 	done
 
 	# wait for all gsnap processes batch to finish
-	echo -e "$(date '+%Y_%m_%d %T') [Batch mode] gsnap pids count: ${#PIDS_ARR[@]}" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	echo -e "$(date '+%Y_%m_%d %T') [Batch mode] gsnap pids list: ${PIDS_ARR[@]}" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	pid_list_failed_msg="[Batch mode] Failed listing process $p."	
+	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] gsnap pids count: ${#PIDS_ARR[@]}" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] gsnap pids list: ${PIDS_ARR[@]}" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	pid_list_failed_msg="[Batch mode: mapping] Failed listing process $p."	
 	for p in "${PIDS_ARR[@]}"; do
 		echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>${ERROR_TMP})
 		rtrn=$?
@@ -847,8 +847,8 @@ for b in $(seq 1 $[ $batches ]); do
 	last=FALSE
 	for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
 		si=$[$s-1]
-		sdi=$[$si+$b*$VARCO_SPLIT_MAP_batch_size]
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] Checking for mapping errors for batch sample $sdi, $si: ${subdirs[$si]} ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+		sdi=$[$si+($b-1)*$VARCO_SPLIT_MAP_batch_size]
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Checking for mapping errors for batch sample $sdi, $si: ${subdirs[$si]} ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 	# last batch sample
 		[[ "$s" -eq "${#subdirs[@]}" ]] && last=TRUE
@@ -862,8 +862,8 @@ for b in $(seq 1 $[ $batches ]); do
 		CURRENT_SAMPLE_CONFIG_ERR=$CURRENT_MAPPING_LOG/sample_loading_err.log	
 
 	# load sample config
-		echo "$(date '+%Y_%m_%d %T') [Batch mode] Loading sample config for $CURRENT_SAMPLE_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
-		sample_config_failed_msg="[Batch mode] Failed loading sample config file, $CURRENT_SAMPLE_CONFIG, from $CURRENT_BATCH_SUBDIR"
+		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Loading sample config for $CURRENT_SAMPLE_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		sample_config_failed_msg="[Batch mode: mapping] Failed loading sample config file, $CURRENT_SAMPLE_CONFIG, from $CURRENT_BATCH_SUBDIR"
 		for cfg in $(get_config_sections $CURRENT_SAMPLE_CONFIG 2>$CURRENT_SAMPLE_CONFIG_ERR; rtrn=$?); do
 			if [[ "$rtrn" -eq 0 ]]; then
 				echo -e "--- Config section [${cfg}] ---"
@@ -895,60 +895,271 @@ for b in $(seq 1 $[ $batches ]); do
 		pid_status=$(egrep "exited" ${ERROR_TMP} 2>&1 | egrep $(cat $CURRENT_MAPPING_PID) 2>&1)
 
 		if [[ -z $(echo -e $pid_status 2>&1 | egrep "zero exit status") ]]; then
-			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] $CURRENT_SAMPLE_NAME sample mapping process exited with non zero exit status:\n$pid_status" | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] $CURRENT_SAMPLE_NAME sample mapping process exited with non zero exit status:\n$pid_status" | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 			let errs=errs+1
+			break
 		else
-			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] pid status: $pid_status" 2>&1 | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] pid status: $pid_status" 2>&1 | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		fi
 
 		if [[ -z $(tail -n 1 "${CURRENT_MAPPING_ERROR}" | egrep -v "^$" | egrep "^Processed" 2>&1) ]]; then
-			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] $CURRENT_SAMPLE_NAME sample error output:" 2>&1 | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1; 
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] $CURRENT_SAMPLE_NAME sample error output:" 2>&1 | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1; 
 			cat "${CURRENT_MAPPING_ERROR}" 2>&1 | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 			let errs=errs+1
+			break
 		fi
 	# Last batch sample: have a break!
 		[[ $last == "TRUE" ]] && break   
 	done
 
 	if [[ $errs == 0 ]]; then
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] all gsnap processes for batch #$b finished without errors." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] all gsnap processes for batch #$b finished without errors." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 	else
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] some errors occured while gsnap processing samples for batch #$b." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode] refer to $CURRENT_MAPPING_ERROR file for details." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] some errors occured while gsnap processing samples for batch #$b." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] refer to $CURRENT_MAPPING_ERROR file for details." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		exit 1
 	fi
 
+	# 1.6 Conversion: sam to sorted bam
+	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Processing sam conversion to sorted indexed bam ... " |  tee -a $LOG_DIR/$LOGFILE 2>&1
 
+	# for each conversion command
+	view_command="samtools view"
+	view_command_ext="bam"
+	sort_command="samtools sort"
+	sort_command_ext="sorted.$view_command_ext"
+	index_command="samtools index"
+	index_command_ext="${sort_command_ext}.bai"
+	conversion_commands=("$view_command" "$sort_command" "$index_command")
 
+	for cmd in "${conversion_commands[@]}"; do
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Processing with $cmd ... " |  tee -a $LOG_DIR/$LOGFILE 2>&1
 
+	# reinitiate last batch sample
+		last=FALSE
 
+	# reinitiate pids array
+		PIDS_ARR=()
 
-    
+	## for each sample
+		for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
+			si=$[$s-1]
+			sdi=$[$si+($b-1)*$VARCO_SPLIT_MAP_batch_size]
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Processing batch sample $sdi, $si: ${subdirs[$si]}, for sam conversion to sorted indexed bam ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+			CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename "${subdirs[$si]}")
+			CURRENT_SAMPLE_CONFIG=$CURRENT_BATCH_SUBDIR/$SAMPLE_CONFIG
 
-#	# 1.6  Convert sam to sorted bam
-#	last=FALSE
-#    for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
-#	si=$[$s-1]
-#	sdi=$[$si+$b*$VARCO_SPLIT_MAP_batch_size]
-#	echo -e "$sdi, $si: ${subdirs[$si]}"
-#	CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename "${subdirs[$si]}")
-#	if [[ "$s" -eq "${#subdirs[@]}" ]]; then
-#	    last=TRUE
-#	fi
+	# last batch sample
+			[[ "$s" -eq "${#subdirs[@]}" ]] && last=TRUE
 
-#	# 1.6.1 Build samtools view command
-# 
-#	#.1.6.2 Run the command
+	# load sample config
+			echo "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Loading sample config for $CURRENT_SAMPLE_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+			sample_config_failed_msg="[Batch mode: conversion] Failed loading sample config file, $CURRENT_SAMPLE_CONFIG, from $CURRENT_BATCH_SUBDIR"
+			for cfg in $(get_config_sections $CURRENT_SAMPLE_CONFIG 2>$ERROR_TMP; rtrn=$?); do
+				if [[ "$rtrn" -eq 0 ]]; then
+					echo -e "--- Config section [${cfg}] ---"
+					unset $(set | awk -F= -v cfg="${cfg}" -v prefix="${NAMESPACE}" 'BEGIN { 
+		  				cfg = toupper(cfg);
+		  				prefix = toupper(prefix);
+						}
+						/^prefix_cfg_/  { print $1 }' 2>$ERROR_TMP) $(toupper ${NAMESPACE}_${cfg}_) 2>>$ERROR_TMP
+					rtrn=$?
+					exit_on_error "$ERROR_TMP" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+					set_config_params $CURRENT_SAMPLE_CONFIG ${cfg} ${NAMESPACE} 2>$ERROR_TMP
+					rtrn=$?
+					exit_on_error "$ERROR_TMP" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE" 
+					for params in $(set | grep ^$(toupper ${NAMESPACE}_${cfg}_) 2>$ERROR_TMP); do
+						echo -e "$params"
+					done
+				else
+					exit_on_error "$ERROR_TMP" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+				fi
+			done
 
-#	# 1.6.3 Build samtools sort command
+	# current mapping variables
+			CURRENT_MAPPING_DIR=$CURRENT_BATCH_SUBDIR/$MAPPING_DIR
+			CURRENT_MAPPING_LOG=$CURRENT_MAPPING_DIR/log
+			CURRENT_MAPPING_TMP=$CURRENT_MAPPING_DIR/tmp
+			CURRENT_SAMPLE_NAME=$VARCO_SAMPLE_name
+			CURRENT_MAPPING_ERROR=$CURRENT_MAPPING_LOG/$CURRENT_SAMPLE_NAME\_mapping_b$b\_s$s\_err.log
+			CURRENT_MAPPING_LOGFILE=$CURRENT_MAPPING_LOG/$CURRENT_SAMPLE_NAME\_mapping_b$b\_s$s.log
+			CURRENT_MAPPING_PID=$CURRENT_MAPPING_TMP/$CURRENT_SAMPLE_NAME.pid			
+			CURRENT_MAPPING_SAM=$CURRENT_SAMPLE_NAME\_gsnap_out_b$b\_s$s.sam
+			CURRENT_MAPPING_SAM_BASE=$(basename ${CURRENT_MAPPING_SAM%.*})
 
-#	# 1.6.4 Run the command
+	## current conversion variables 
+			CURRENT_CONVERSION_PID=$CURRENT_MAPPING_TMP/${CURRENT_MAPPING_SAM_BASE}.pid
+			CURRENT_CONVERSION_ERROR=$CURRENT_MAPPING_LOG/$CURRENT_MAPPING_SAM_BASE\_conversion_b$b\_s$s\_err.log
+			CURRENT_CONVERSION_LOGFILE=$CURRENT_MAPPING_LOG/$CURRENT_MAPPING_SAM_BASE\_conversion_b$b\_s$s.log
 
-#	# 1.6.5 Build samtools index command
-#	
-#	# 1.6.6 Run the command
+	## build conversion cli
+			echo -e "--- Config section [${cmd// /_}] ---" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
+			for params in $(set | grep ^$(toupper ${NAMESPACE}_${cmd// /_}_)); do
+	    		echo -e "params: $params" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
+			done
+			cli_options=($(buildCommandLineOptions "$cmd" $NAMESPACE 2>${ERROR_TMP}))
+			rtrn=$?
+			build_opts_failed_msg="[Batch mode: conversion] Failed building $cmd command line options."
+			exit_on_error "$ERROR_TMP" "$build_opts_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+			opts="${cli_options[@]}"
 
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $cmd cli options: $opts" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
+			case $cmd in
+				"$view_command")
+					if [[ -s $CURRENT_MAPPING_DIR/$CURRENT_MAPPING_SAM ]]; then
+						echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] gsnap sam output file: $CURRENT_MAPPING_DIR/$CURRENT_MAPPING_SAM" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1		
+						cmd_out=$CURRENT_MAPPING_SAM_BASE\.$view_command_ext
+						echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] input: $CURRENT_MAPPING_SAM" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+						echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] output: $cmd_out" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+						cmd_cli="$cmd $opts $CURRENT_MAPPING_DIR/$CURRENT_MAPPING_SAM > $CURRENT_MAPPING_DIR/$cmd_out 2>>$CURRENT_CONVERSION_ERROR &"
+					else
+						debug "$CURRENT_MAPPING_DIR/$CURRENT_MAPPING_SAM file does not exist or is empty." | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1; exit 1
+					fi
+				;;
+				"$sort_command")
+					bam_out=$CURRENT_MAPPING_SAM_BASE\.$view_command_ext
+					if [[ -s $CURRENT_MAPPING_DIR/$bam_out ]]; then
+						cmd_out=$CURRENT_MAPPING_SAM_BASE\.sorted
+						echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] input: $bam_out" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
+						echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] output: $cmd_out" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
+						cmd_cli="$cmd $opts $CURRENT_MAPPING_DIR/$bam_out $CURRENT_MAPPING_DIR/$cmd_out 2>>$CURRENT_CONVERSION_ERROR &"
+					else
+						debug "$CURRENT_MAPPING_DIR/$bam_out file does not exist or is empty." | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1; exit 1
+					fi
+				;;	
+				"$index_command")
+					sorted_bam_out=${CURRENT_MAPPING_SAM_BASE}.$sort_command_ext
+					if [[ -s $CURRENT_MAPPING_DIR/$sorted_bam_out ]]; then
+						cmd_out=$CURRENT_MAPPING_SAM_BASE\.$index_command_ext
+						echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] input: $sorted_bam_out" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
+						echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] output: $cmd_out" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
+						cmd_cli="$cmd $opts $CURRENT_MAPPING_DIR/$sorted_bam_out 2>>${CURRENT_CONVERSION_ERROR} &"
+					else
+						debug "$CURRENT_MAPPING_DIR/$sorted_bam_out file does not exist or is empty." | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1; exit 1
+					fi
+				;;
+				*)
+					debug "unexpected $cmd, it will not be processed." | tee -a ${CURRENT_CONVERSION_ERROR} 2>&1 | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			esac
+	## run cli
+			if [[ -n $cmd_cli ]]; then
+				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Executing command: ${cmd_cli}" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
+				eval "$cmd_cli" 2>${ERROR_TMP}
+				pid=$!
+				rtrn=$?
+				eval_conversion_failed_msg="[Batch mode] Failed eval $cmd_cli."
+				exit_on_error "$ERROR_TMP" "$eval_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $CURRENT_MAPPING_SAM_BASE pid: $pid" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
+				echo -e $pid >$CURRENT_CONVERSION_PID 2>${ERROR_TMP}
+				PIDS_ARR=("${PIDS_ARR[@]}" "$pid")
+			else
+				debug "command name, $cmd, was not processed. cmd cli is null." | tee -a ${CURRENT_CONVERSION_ERROR} 2>&1 | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1; exit 1
+			fi
 
+	# Last batch sample: have a break!
+			[[ $last == "TRUE" ]] && break
+		done
+
+	# wait for all conversion cmd processes to finish then run the next cmd
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode :conversion] $cmd pids count: ${#PIDS_ARR[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $cmd pids list: ${PIDS_ARR[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1		
+		for p in "${PIDS_ARR[@]}"; do
+			echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>{ERROR_TMP})
+			rtrn=$?
+			pid_list_failed_msg="[Batch mode: conversion] Failed listing $cmd process using its pid."
+			exit_on_error "$ERROR_TMP" "$pid_list_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+		done
+
+		waitall "${PIDS_ARR[@]}" 2>${ERROR_TMP}
+		egrep "exited" ${ERROR_TMP} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+
+	# check for errors
+		errs=0
+		last=FALSE
+		for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
+			si=$[$s-1]
+			sdi=$[$si+($b-1)*$VARCO_SPLIT_MAP_batch_size]
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Checking for $cmd conversion errors for batch sample $sdi, $si: ${subdirs[$si]} ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+
+	# last batch sample
+			[[ "$s" -eq "${#subdirs[@]}" ]] && last=TRUE
+
+	# current sample variables
+			CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename ${subdirs[$si]})
+			CURRENT_SAMPLE_CONFIG=$CURRENT_BATCH_SUBDIR/$SAMPLE_CONFIG
+
+	# current mapping variables
+			CURRENT_MAPPING_DIR=$CURRENT_BATCH_SUBDIR/$MAPPING_DIR
+			CURRENT_MAPPING_LOG=$CURRENT_MAPPING_DIR/log
+			CURRENT_MAPPING_TMP=$CURRENT_MAPPING_DIR/tmp
+
+	# load sample config
+			echo "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Loading sample config: $CURRENT_SAMPLE_CONFIG file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+			sample_config_failed_msg="[Batch mode: conversion] Failed loading sample config file, $CURRENT_SAMPLE_CONFIG, from $CURRENT_BATCH_SUBDIR"
+			for cfg in $(get_config_sections $CURRENT_SAMPLE_CONFIG 2>$CURRENT_SAMPLE_CONFIG_ERR; rtrn=$?); do
+				if [[ "$rtrn" -eq 0 ]]; then
+					echo -e "--- Config section [${cfg}] ---"
+					unset $(set | awk -F= -v cfg="${cfg}" -v prefix="${NAMESPACE}" 'BEGIN { 
+		  				cfg = toupper(cfg);
+		  				prefix = toupper(prefix);
+						}
+						/^prefix_cfg_/  { print $1 }' 2>$CURRENT_SAMPLE_CONFIG_ERR) $(toupper ${NAMESPACE}_${cfg}_) 2>>$CURRENT_SAMPLE_CONFIG_ERR
+					rtrn=$?
+					exit_on_error "$CURRENT_SAMPLE_CONFIG_ERR" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+					set_config_params $CURRENT_SAMPLE_CONFIG ${cfg} ${NAMESPACE} 2>$CURRENT_SAMPLE_CONFIG_ERR
+					rtrn=$?
+					exit_on_error "$CURRENT_SAMPLE_CONFIG_ERR" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE" 
+					for params in $(set | grep ^$(toupper ${NAMESPACE}_${cfg}_) 2>$CURRENT_SAMPLE_CONFIG_ERR); do
+						echo -e "$params"
+					done
+				else
+					exit_on_error "$CURRENT_SAMPLE_CONFIG_ERR" "$sample_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+				fi
+			done
+
+	# current mapping variables
+			CURRENT_SAMPLE_NAME=$VARCO_SAMPLE_name
+			CURRENT_MAPPING_ERROR=$CURRENT_MAPPING_LOG/$CURRENT_SAMPLE_NAME\_mapping_b$b\_s$s\_err.log
+			CURRENT_MAPPING_LOGFILE=$CURRENT_MAPPING_LOG/$CURRENT_SAMPLE_NAME\_mapping_b$b\_s$s.log
+			CURRENT_MAPPING_PID=$CURRENT_MAPPING_TMP/$CURRENT_SAMPLE_NAME.pid			
+			CURRENT_MAPPING_SAM=$CURRENT_SAMPLE_NAME\_gsnap_out_b$b\_s$s.sam
+			CURRENT_MAPPING_SAM_BASE=$(basename ${CURRENT_MAPPING_SAM%.*})
+			CURRENT_SAMPLE_CONFIG_ERR=$CURRENT_MAPPING_LOG/sample_loading_err.log
+
+	## current conversion variables 
+			CURRENT_CONVERSION_PID=$CURRENT_MAPPING_TMP/${CURRENT_MAPPING_SAM_BASE}.pid
+			CURRENT_CONVERSION_ERROR=$CURRENT_MAPPING_LOG/$CURRENT_MAPPING_SAM_BASE\_conversion_b$b\_s$s\_err.log
+			CURRENT_CONVERSION_LOGFILE=$CURRENT_MAPPING_LOG/$CURRENT_MAPPING_SAM_BASE\_conversion_b$b\_s$s.log
+
+		# check for errors
+			pid_status=$(egrep "exited" ${ERROR_TMP} 2>&1 | egrep $(cat $CURRENT_CONVERSION_PID) 2>&1)
+
+			if [[ -z $(echo -e $pid_status 2>&1 | egrep "zero exit status") ]]; then
+				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $CURRENT_SAMPLE_NAME sample, $cmd conversion process exited with non zero exit status:\n$pid_status" | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+				let errs=errs+1
+				break
+			else
+				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] pid status: $pid_status" 2>&1 | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			fi
+
+			if [[ -z $(tail -n 1 "${CURRENT_CONVERSION_ERROR}" | egrep -v "^$" | egrep "^\[samopen\]" 2>&1) ]]; then
+				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $CURRENT_SAMPLE_NAME sample error output:" 2>&1 | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1; 
+				cat "${CURRENT_CONVERSION_ERROR}" 2>&1 | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+				let errs=errs+1
+				break
+			fi
+		# Last batch sample: have a break!
+			[[ $last == "TRUE" ]] && break   
+		done
+
+		if [[ $errs == 0 ]]; then
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] all $cmd conversion processes for batch #$b finished without errors." | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		else
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] some errors occured while $cmd processing samples for batch #$b." | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] refer to $CURRENT_CONVERSION_ERROR file for details." | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			exit 1
+		fi
+	done
 
     # Unshifting the current batch samples from fastq subdirs array
     echo -e "$(date '+%Y_%m_%d %T') [Batch mode] remaining subdirs count before unshifting: ${#subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -966,29 +1177,9 @@ for b in $(seq 1 $[ $batches ]); do
     echo -e "$(date '+%Y_%m_%d %T') [Batch mode] remaining subdirs list after unshifting: ${subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
     # Wait until the last current batch sample finish before launching the next batch
-
-
-
-
+	echo -e "$(date '+%Y_%m_%d %T') [Batch mode] Processing batch samples #$b has finished without errors." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	[[ "$batches" -gt 1 ]] && echo -e "$(date '+%Y_%m_%d %T') [Batch mode] Will proceed with next batch samples." | tee -a $LOG_DIR/$LOGFILE 2>&1
 done
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #
@@ -1003,6 +1194,9 @@ unset $(set | awk -F= -v cfg="${cfg}" -v prefix="${NAMESPACE}" 'BEGIN {
        }
        /^prefix_cfg_/  { print $1 }') $(toupper ${prefix}_${cfg}_)
 echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+
+# find and remove all sam and corresponding bam files: TODO
+
 
 #=====
 # END
