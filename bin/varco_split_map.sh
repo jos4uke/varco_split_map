@@ -233,6 +233,7 @@ done
 rtrn=$?
 exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -ne "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 #
 # Test for disk space: TODO
@@ -506,8 +507,10 @@ for b in $(seq 1 $[ $batches ]); do
 		rtrn=$?
 		exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 		echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	else
 		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Skipping checking for average cpu load before running on samples batch #$b." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	fi
 	
     # 1.2 Test for available disk space: TODO
