@@ -211,7 +211,9 @@ isCpuAvailable()
 
 	# get system infos
 	sysCoresMax=$(cat /proc/cpuinfo | grep processor | wc -l)
-	
+	rtrn=$?
+	[[ $rtrn -ne 0 ]] && return 1
+
 	# limits 
 	jobCoresMax=$[ $sysCoresMax / $rf ]
 	sysCoresUpLim=$[ $sysCoresMax - $sysCoresKeep ]
@@ -220,17 +222,17 @@ isCpuAvailable()
 	coresAvailableArr=($(cat /proc/loadavg | cut -d" " -f1,2,3 | gawk -v jobCoresMax=$jobCoresMax -v sysCoresUpLim=$sysCoresUpLim '{
 		ORS=" "; for(i=1;i<=NF;i++) {print int(sysCoresUpLim - $i)}; {print "\n"}			
 		}'))
-	
+	rtrn=$?
+	[[ $rtrn -ne 0 ]] && return 1	
+
 	for c in "${coresAvailableArr[@]}"; do
 		if [[ "$c" -ge "$jobCoresMax" ]]; then
 			continue
 		else
-			echo FALSE	
-			return 1
+			echo FALSE
 		fi
 	done
 	echo TRUE
-	return 0
 }
 
 #-------------------------------------------------------------------------
