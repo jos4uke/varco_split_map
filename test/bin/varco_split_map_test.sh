@@ -450,15 +450,25 @@ testFailedWaitingCliProcesses()
 	# test for assertions: todo
 }
 
+#-------------------------------
+# testFailedIsCpuAvailable
+#
+testFailedIsCpuAvailable()
+{
+	if [[ $(isCpuAvailable 2 2 2>${stderrF}) == "TRUE" ]]; then
+		if [[ "$?" == 0 ]]; then
+			echo -e "isCpuAvailable: TRUE was returned" > ${stdoutF}
+		else
+			echo -e "isCpuAvailable: non zero exit status" >> ${stderrF}
+		fi
+	else
+		echo -e "isCpuAvailable: FALSE was returned." >> ${stderrF}
+	fi
 
-
-
-
-
-
-
-
-
+	assertTrue "Expected output to stdout." "[ -s ${stdoutF} ]"
+	assertFalse "Unexpected output to stderr." "[ -s ${stderrF} ]"
+	[[ -s ${stderrF} ]] && (echo -e "stderr output:"; cat ${stderrF} 2>&1) 
+}
 
 
 

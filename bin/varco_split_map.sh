@@ -48,6 +48,8 @@ MAX_NUMB_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 MAX_NUMB_CORES_ALLOWED=$[$MAX_NUMB_CORES/2]
 MAX_BATCH_SIZE=0
 
+CPU_CHECK_INTERVAL=5
+
 PIDS_ARR=()
 WAITALL_DELAY=60
 
@@ -111,15 +113,16 @@ User Configuration File: here is the main configuration sections and their corre
                          This option controls if cpu overload checking has to be performed.
                          If TRUE, this script will run only if cpu average load did not exceed 50% 
                          in the last 1, 5 and 15 minutes. This test is performed before running the script,
-                         and for each batch. If cpu average load exceeds 50%, the script will wait for 1 minute
+                         and for each batch. If available cores (#max_cores_limit-#cpu_load) is greater or equal
+						 than maximum allowed cores (needed to perform the job), the script will wait for 5 seconds
                          before testing again cpu average load. TODO: put some timeout else server will crash
     - batch_size (default=4)
                          This option controls the number of samples for each batch. 
                          Its value is determined dynamically if the user value exceeds the max batch size. 
-                         The max batch size equals the ratio max number of processors allowed 
+                         The max batch size equals the ratio max number of cores allowed 
                          divided by the number of threads (mapper option).
-                         The max number of processors allowed is fairly set by default 
-                         to 50% of max number of processors available.
+                         The max number of cores allowed is fairly set by default 
+                         to 50% of max number of cores available.
                          If batch_size lower or equal to max batch size, then use batch_size value.
                          Else, batch_size equals half max batch size.
     - clean (default=FALSE)
@@ -217,11 +220,18 @@ else
 fi
 
 #
-# Test for cpu average load: TODO
-# cf lib for a function to tell if average cpu load is ok else wait a minute
-echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
-# http://blog.scoutapp.com/articles/2009/07/31/understanding-load-averages
-# average load should be under at most the total #cores or as stated the total allowed #cores# cat /proc/loadavg # avg1 avg5 avg10 running_threads/total_threads last_running_pid
+# Test for cpu average load
+# 
+echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+cpu_load_failed_msg="[CPU load] Failed checking for average cpu load."	
+until [[ $(isCpuAvailable 2 2 2>{ERROR_TMP})  == "TRUE" ]]; do
+	rtrn=$?
+	exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
+	echo -e "." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	sleep $CPU_CHECK_INTERVAL
+done
+rtrn=$?
+exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 #
@@ -445,22 +455,22 @@ fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
 # 1.4.2 Perform QC before -> waitall
 # 1.4.3 Perform Trimming -> waitall
 # 1.4.4 Perform QC after -> waitall
-# 1.5 Wait for all QC+Trim processes to finish
-# 1.6 Iterate over batch samples for Mapping
-# 1.6.1 Create a mapping sub-subdir for each sample
-# 1.6.2 Create mapping subdirs
-# 1.6.3 Perform mapping -> waitall
-# 1.7 Wait for all Mapping processes to finish
-# 1.8 Iterate over commands for Conversion
-# 1.8.1 Iterate over batch samples
-# 1.8.2 Perform bam conversion -> waitall
-# 1.8.3 Perform bam sorting -> waitall
-# 1.8.4 Perform bam indexing -> waitall
-# 1.9 Wait for all Conversion processes to finish
-# 1.10 Unshifting current batch samples
-# 1.11 Next batch
-# 1.12 End of batches
-# 1.13 Clean
+# 1.4.5 Wait for all QC+Trim processes to finish
+# 1.5 Iterate over batch samples for Mapping
+# 1.5.1 Create a mapping sub-subdir for each sample
+# 1.5.2 Create mapping subdirs
+# 1.5.3 Perform mapping -> waitall
+# 1.5.4 Wait for all Mapping processes to finish
+# 1.6 Iterate over commands for Conversion
+# 1.6.1 Iterate over batch samples
+# 1.6.2 Perform bam conversion -> waitall
+# 1.6.3 Perform bam sorting -> waitall
+# 1.6.4 Perform bam indexing -> waitall
+# 1.6.5 Wait for all Conversion processes to finish
+# 1.7 Unshifting current batch samples
+# 1.8 Next batch
+# 1.9 End of batches
+# 1.10 Clean
 
 echo "$(date '+%Y_%m_%d %T') [Batch mode] Running batch mode on fastq subdirs ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 unsorted_subdirs=("${fastq_subdirs[@]}")
@@ -483,12 +493,22 @@ echo "$(date '+%Y_%m_%d %T') [Batch mode] $batches computed batche(s) expected t
 # 1. Iterate over batches
 for b in $(seq 1 $[ $batches ]); do
 
-    # 1.1 Test for average cpu load: TODO
-    echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
-	# http://blog.scoutapp.com/articles/2009/07/31/understanding-load-averages
-	# average load should be under at most the total #cores or as stated the total allowed #cores
-	# cat /proc/loadavg # avg1 avg5 avg10 running_threads/total_threads last_running_pid
-	echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+    # 1.1 Test for average cpu load:
+	if [[ $VARCO_SPLIT_MAP_check_cpu_overload == "TRUE" ]]; then
+		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+		cpu_load_failed_msg="[CPU load] Failed checking for average cpu load before running on samples batch #$b."	
+		until [[ $(isCpuAvailable 2 2 2>{ERROR_TMP})  == "TRUE" ]]; do
+			rtrn=$?
+			exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
+			echo -e "." | tee -a $LOG_DIR/$LOGFILE 2>&1
+			sleep $CPU_CHECK_INTERVAL
+		done
+		rtrn=$?
+		exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
+		echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	else
+		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Skipping checking for average cpu load before running on samples batch #$b." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	fi
 	
     # 1.2 Test for available disk space: TODO
 	echo -ne "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1

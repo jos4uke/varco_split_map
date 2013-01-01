@@ -197,6 +197,69 @@ buildCommandLineOptions()
 			print opt_val}'
 }
 
+#-------------------------------------------------------------------------
+# Function : isCpuAvailable [max_cores_reducing_factor] [amount_of_cores_to_keep_for_system]
+# Purpose  : Check if cores are available for the given reducing factor on system max cores and keep the amount of cores for this system
+isCpuAvailable()
+{
+	rf=$1
+	sysCoresKeep=$2
+
+	# default
+	[[ -z $rf ]] && rf=2
+	[[ -z $sysCoresKeep ]] && sysCoresKeep=2
+
+	# get system infos
+	sysCoresMax=$(cat /proc/cpuinfo | grep processor | wc -l)
+	
+	# limits 
+	jobCoresMax=$[ $sysCoresMax / $rf ]
+	sysCoresUpLim=$[ $sysCoresMax - $sysCoresKeep ]
+
+	# cores 
+	coresAvailableArr=($(cat /proc/loadavg | cut -d" " -f1,2,3 | gawk -v jobCoresMax=$jobCoresMax -v sysCoresUpLim=$sysCoresUpLim '{
+		ORS=" "; for(i=1;i<=NF;i++) {print int(sysCoresUpLim - $i)}; {print "\n"}			
+		}'))
+	
+	for c in "${coresAvailableArr[@]}"; do
+		if [[ "$c" -ge "$jobCoresMax" ]]; then
+			continue
+		else
+			echo FALSE	
+			return 1
+		fi
+	done
+	echo TRUE
+	return 0
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
