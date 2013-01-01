@@ -50,6 +50,8 @@ MAX_BATCH_SIZE=0
 
 CPU_CHECK_INTERVAL=5
 
+DATA_EXPANSION_FACTOR=2
+
 PIDS_ARR=()
 WAITALL_DELAY=60
 
@@ -233,18 +235,27 @@ done
 rtrn=$?
 exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
-echo -ne "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 #
-# Test for disk space: TODO
-# do it after loading config parameters to evaluate the used disk space for raw data (all subdirs with fastq files) 
-# if available disk space lower than raw data used disk space, then abort
-#echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
-#avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
-echo -ne "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
-#echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
-#avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
-echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+# Test for disk space: 
+# warning only about available disk space and if enough space or not to process all samples in data root dir
+#
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+disk_space_failed_msg="[Disk space] Failed while checking for available disk space for current $JOB_TAG job."
+complete_dataset=($(ls -d -1 $DATA_ROOT_DIR/*))
+if [[ $(isDiskSpaceAvailable $PWD $DATA_EXPANSION_FACTOR "${complete_dataset[@]}" 2>${ERROR_TMP}) == "TRUE" ]]; then
+	rtrn=$?
+	exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"		
+	echo -e "$(date '+%Y_%m_%d %T') [Disk space] OK Enough disk space to process the complete dataset for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
+else
+	rtrn=$?
+	exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+	echo -e "$(date '+%Y_%m_%d %T') [Disk space] Warning Not enough disk space to process the complete dataset for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
+fi
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] available disk space on working directory partition:\n$(df -h $PWD)" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] dataset expected disk space expansion for data expansion factor $DATA_EXPANSION_FACTOR:\n$(du -shc "${complete_dataset[@]}" | tail -n 1 | awk '{print $1}') x $DATA_EXPANSION_FACTOR" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 #
 # Check for DATA_ROOT_DIR existence
@@ -445,6 +456,24 @@ fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
     fi
 
 #
+# Test for available disk space on fastq subdirs
+#
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space only for fastq subdirs ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+disk_space_failed_msg="[Disk space] Failed while checking for available disk space only for fastq subdirs."
+if [[ $(isDiskSpaceAvailable $PWD $DATA_EXPANSION_FACTOR "${fastq_subdirs[@]}" 2>${ERROR_TMP}) == "TRUE" ]]; then
+	rtrn=$?
+	exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"		
+	echo -e "$(date '+%Y_%m_%d %T') [Disk space] OK Enough disk space to process only fastq subdirs for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
+else
+	rtrn=$?
+	exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+	echo -e "$(date '+%Y_%m_%d %T') [Disk space] Warning Not enough disk space to process only fastq subdirs for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
+fi
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] available disk space on working directory partition:\n$(df -h $PWD)" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] dataset expected disk space expansion for data expansion factor $DATA_EXPANSION_FACTOR:\n$(du -shc "${fastq_subdirs[@]}" | tail -n 1 | awk '{print $1}') x $DATA_EXPANSION_FACTOR" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+
+#
 # Batch mode:
 # 1. Iterate over batches
 # 1.1 Test for average cpu load
@@ -507,18 +536,41 @@ for b in $(seq 1 $[ $batches ]); do
 		rtrn=$?
 		exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 		echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
-		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	else
-		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Skipping checking for average cpu load before running on samples batch #$b." | tee -a $LOG_DIR/$LOGFILE 2>&1
-		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [CPU load] Skipping checking for average cpu load before running on samples batch #$b." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	fi
 	
-    # 1.2 Test for available disk space: TODO
-	echo -ne "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
-	#echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Test for available disk space" | tee -a $LOG_DIR/$LOGFILE 2>&1
-	#avail_disk_space=$(df -h $PWD | tail -1 | awk '{print $4}' 2>$ERROR_TMP)
-	echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
-    
+    # 1.2 Test for available disk space for current samples batch
+	echo -e "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+	disk_space_failed_msg="[Disk space] Failed while checking for available disk space only for samples batch #$b."
+	last=FALSE
+	samples_batch_dirs=($(for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
+		si=$[$s-1]
+		[[ "$s" -eq "${#subdirs[@]}" ]] && last=TRUE
+
+		echo "${subdirs[$si]}"
+
+	# Last batch sample: have a break!
+		[[ $last == "TRUE" ]] && break
+	done))
+	if [[ $(isDiskSpaceAvailable $PWD $DATA_EXPANSION_FACTOR "${samples_batch_dirs[@]}" 2>${ERROR_TMP}) == "TRUE" ]]; then
+		rtrn=$?
+		exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"		
+		echo -e "$(date '+%Y_%m_%d %T') [Disk space] OK Enough disk space to process only samples batch #$b for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	else
+		rtrn=$?
+		exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+		disk_space_runout_msg="[Disk space] Warning Not enough disk space to process only samples batch #$b for data expansion factor $DATA_EXPANSION_FACTOR. Abort running this pipeline."
+		echo -e "$(date '+%Y_%m_%d %T') [Disk space] available disk space on working directory partition:\n$(df -h $PWD)" >$ERROR_TMP
+		echo -e "$(date '+%Y_%m_%d %T') [Disk space] dataset expected disk space expansion for data expansion factor $DATA_EXPANSION_FACTOR:\n$(du -shc "${samples_batch_dirs[@]}" | tail -n 1 | awk '{print $1}') x $DATA_EXPANSION_FACTOR" >>$ERROR_TMP
+		exit_on_error "$ERROR_TMP" "$disk_space_runout_msg" 1 "$LOG_DIR/$LOGFILE"		
+	fi
+	echo -e "$(date '+%Y_%m_%d %T') [Disk space] available disk space on working directory partition:\n$(df -h $PWD)" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -e "$(date '+%Y_%m_%d %T') [Disk space] dataset expected disk space expansion for data expansion factor $DATA_EXPANSION_FACTOR:\n$(du -shc "${samples_batch_dirs[@]}" | tail -n 1 | awk '{print $1}') x $DATA_EXPANSION_FACTOR" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -e "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space done" | tee -a $LOG_DIR/$LOGFILE 2>&1
+
 	# 1.3 Iterate over batch samples for getting sample infos
 	last=FALSE 	# for last batch sample
     echo "$(date '+%Y_%m_%d %T') [Batch mode] Running batch mode on samples batch #$b ..." | tee -a $LOG_DIR/$LOGFILE 2>&1   

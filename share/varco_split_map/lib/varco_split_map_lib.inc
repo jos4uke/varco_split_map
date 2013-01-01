@@ -233,8 +233,32 @@ isCpuAvailable()
 	return 0
 }
 
+#-------------------------------------------------------------------------
+# Function : isDiskSpaceAvailable partition data_expansion_factor data_dirs_list ...
+# Purpose  : Check if enough disk space is available for the given needed disk space amount
+isDiskSpaceAvailable()
+{
+	partition=$1
+	def=$2
+	shift 2
+	data_dirs=("$@")
 
+	# available disk space available on partition
+	avail_disk_space=$(df -k $PWD | tail -n 1 | awk '{print $4}')
 
+	# data dirs used disk space
+	data_dirs_used_disk_space=$(du -sck "${data_dirs[@]}" | tail -n 1 | awk '{print $1}')
+
+	# expected data expansion
+	data_dirs_expanded_disk_space=$[ $data_dirs_used_disk_space * $def ]
+
+	# compare
+	if [[ "$data_dirs_expanded_disk_space" -ge "$avail_disk_space" ]]; then
+		echo FALSE
+	else
+		echo TRUE
+	fi
+}
 
 
 

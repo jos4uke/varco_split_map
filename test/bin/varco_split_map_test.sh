@@ -470,7 +470,25 @@ testFailedIsCpuAvailable()
 	[[ -s ${stderrF} ]] && (echo -e "stderr output:"; cat ${stderrF} 2>&1) 
 }
 
+#-------------------------------
+# testFailedIsDiskSpaceAvailable
+#
+testFailedIsDiskSpaceAvailable()
+{
+	if [[ $(isDiskSpaceAvailable $PWD 2 $TEST_DATA_ROOT_DIR/DG $TEST_DATA_ROOT_DIR/DI 2>${stderrF}) == "TRUE" ]]; then
+		if [[ "$?" == 0 ]]; then
+			echo -e "isDiskSpaceAvailable: TRUE was returned" > ${stdoutF}
+		else
+			echo -e "isDiskSpaceAvailable: non zero exit status" >> ${stderrF}
+		fi
+	else
+		echo -e "isDiskSpaceAvailable: FALSE was returned." >> ${stderrF}
+	fi
 
+	assertTrue "Expected output to stdout." "[ -s ${stdoutF} ]"
+	assertFalse "Unexpected output to stderr." "[ -s ${stderrF} ]"
+	[[ -s ${stderrF} ]] && (echo -e "stderr output:"; cat ${stderrF} 2>&1)
+}
 
 
 
