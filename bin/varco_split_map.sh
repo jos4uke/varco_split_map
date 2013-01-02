@@ -28,11 +28,14 @@ PREFIX=$DEV_PREFIX # TO BE CHANGED WHEN SWITCHING TO PROD
 
 # Set variables
 
-ARGS=2
+ARGS=3
 DATA_ROOT_DIR=$1
 JOB_TAG=$2
+RECIPIENT=$3
 
-DATE=$(date '+%Y_%m_%d_%T')
+EXECUTED_COMMAND="$0 $*"
+
+DATE=$(date '+%Y_%m_%d_%T') # TODO: change to '+%F_%Hh%Mm%Ss'
 WORKING_DIR=$(pwd)
 LOGFILE=${JOB_TAG}_${USER}_$DATE.log
 
@@ -70,6 +73,8 @@ PREREQUISITES_MSG="You need to copy the user configuration file to your working 
 
 MAPPER_VERSION=$(gsnap --version 2>&1 | awk -F"\n" 'BEGIN{info=""}; {info=(info "\n\t" $1)}; END{printf info}')
 
+AUTHOR_INFOS="Joseph Tran\nIJPB Bioinformatics Development Team\nContact: Joseph.Tran@versailles.inra.fr"
+
 # local functions
 exit_on_error()
 {
@@ -82,7 +87,10 @@ exit_on_error()
 		echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $status." | tee -a $err 2>&1 | tee -a $log 2>&1
 		echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] Tail error output:" | tee -a $log 2>&1
 		echo -e "... $(tail -n 10 $err)" 2>&1 | tee -a $log 2>&1
-    	echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $err." | tee -a $log 2>&1 
+    	echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $err." | tee -a $log 2>&1
+		# send an email
+		job_error_msg="$JOB_TAG job error: $msg\nExit status: $status\nMore details can be found in $(readlink -f $err)\nLast error output:\n... $(tail -n 10 $err)"
+		[[ -n $RECIPIENT ]] && sendEmail $RECIPIENT "[$(basename ${0%.*})] $JOB_TAG job error" "$job_error_msg" 
 		exit $status
 	fi
 }
@@ -90,7 +98,7 @@ exit_on_error()
 #==============================================
 # TEST if enough args else print usage message
 #==============================================
-[[ $# -ne "$ARGS" ]] && { printf %s "\
+[[ $# -le 1 || $# -gt "$ARGS" ]] && { printf %s "\
 Program: $(basename $0)
 Version: $VERSION
 Author: Joseph Tran, IJPB Bioinformatics Dev Team
@@ -98,10 +106,11 @@ Contact: Joseph.Tran@versailles.inra.fr
 
 TODO: add license copyright 2012
 
-Usage: $(basename $0) samples_root_dir job_tag
+Usage: $(basename $0) samples_root_dir job_tag recipient_email_addr
 
-Arguments: samples_root_dir Path to the parent folder containing the reads samples subdirectories 
-           job_tag          <String> Prefix to attach to any output files (without space)
+Arguments: samples_root_dir      Path to the parent folder containing the reads samples subdirectories 
+           job_tag                <String> Prefix to attach to any output files (without space)
+		   [recipient_email_addr] Valid email address to send log and error messages to (optional)
 
 Description: This script performs reads mapping in batch mode by splitting
              given samples in several batches and run sequentially each batch 
@@ -172,8 +181,7 @@ Notes: 1. Current mapper is gsnap
        2. Current sam toolkit is samtools
           $(samtools 2>&1 | egrep 'Program|Version'| awk -F"\n" 'BEGIN{info=""}; {info=(info "\n\t" $1)}; END{printf info}')
 
-Joseph Tran, IJPB Bioinformatics Development Team
-Contact: Joseph.Tran@versailles.inra.fr
+$AUTHOR_INFOS
 
 ";
 exit 1; }
@@ -1136,7 +1144,7 @@ for b in $(seq 1 $[ $batches ]); do
 		done
 
 	# wait for all conversion cmd processes to finish then run the next cmd
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode :conversion] $cmd pids count: ${#PIDS_ARR[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $cmd pids count: ${#PIDS_ARR[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $cmd pids list: ${PIDS_ARR[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1		
 		for p in "${PIDS_ARR[@]}"; do
 			echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>${ERROR_TMP})
@@ -1254,6 +1262,10 @@ for b in $(seq 1 $[ $batches ]); do
     # Wait until the last current batch sample finish before launching the next batch
 	echo -e "$(date '+%Y_%m_%d %T') [Batch mode] Processing batch samples #$b has finished without errors." | tee -a $LOG_DIR/$LOGFILE 2>&1
 	[[ "$batches" -gt 1 ]] && echo -e "$(date '+%Y_%m_%d %T') [Batch mode] Will proceed with next batch samples." | tee -a $LOG_DIR/$LOGFILE 2>&1
+
+	# send an email
+	batch_completed_msg="Batch #$b completed successfully."
+	[[ -n $RECIPIENT ]] && sendEmail $RECIPIENT "[$(basename ${0%.*})] $JOB_TAG job, batch #$b/$batches completed " "$batch_completed_msg"
 done
 
 
@@ -1276,11 +1288,14 @@ echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 #=====
 # END
 #=====
-echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Executed command: $0 $*" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Executed command: $EXECUTED_COMMAND" | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo -n "$(date '+%Y_%m_%d %T') [$(basename $0)] Elapsed time: " | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo |awk -v time="$SECONDS" '{print strftime("%Hh:%Mm:%Ss", time, 1)}' | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Exits the pipeline." | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo "$(date '+%Y_%m_%d %T') [$(basename $0)] More information about this job can be found in $LOG_DIR/$LOGFILE" | tee -a $LOG_DIR/$LOGFILE 2>&1
+# send an email
+job_completed_msg="$JOB_TAG job completed successfully."
+[[ -n $RECIPIENT ]] && sendEmail $RECIPIENT "[$(basename ${0%.*})] $JOB_TAG job completed" "$job_completed_msg"
 
 #exit 0
 
