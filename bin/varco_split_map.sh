@@ -201,14 +201,10 @@ if [[ -d $JOB_TAG ]]; then
     echo "$(date '+%Y_%m_%d %T') [Job directory] OK $JOB_TAG directory already exists. Will output all job files in this directory." | tee -a $ERROR_TMP 2>&1
 else
     mkdir $JOB_TAG 2>>$ERROR_TMP
-    if [[ $? -ne 0 ]]; then
-	echo "$(date '+%Y_%m_%d %T') [Job directory] Failed Job directory, $JOB_TAG, was not created." | tee -a $ERROR_TMP 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." 2>&1
-	exit 126
-    else
+	rtrn=$?
+	job_dir_failed_msg="[Job directory] Failed Job directory, $JOB_TAG, was not created."
+	exit_on_error "$ERROR_TMP" "$job_dir_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 	echo "$(date '+%Y_%m_%d %T') [Job directory] OK $JOB_TAG directory was created successfully. Will output all job files in this directory." | tee -a $ERROR_TMP 2>&1
-    fi
 fi
 
 # Create log directory
@@ -218,15 +214,11 @@ if [[ -d $LOG_DIR ]]; then
     echo "$(date '+%Y_%m_%d %T') [Log directory] OK $LOG_DIR directory already exists. Will write log files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 else
     mkdir $LOG_DIR 2>>$ERROR_TMP
-    if [[ $? -ne 0 ]]; then
-	echo "$(date '+%Y_%m_%d %T') [Log directory] Failed Log directory, $LOG_DIR, was not created." | tee -a $ERROR_TMP 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 126." | tee -a $ERROR_TMP 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	exit 126
-    else    
+	rtrn=$?
+	log_dir_failed_msg="[Log directory] Failed Log directory, $LOG_DIR, was not created."
+	exit_on_error "$ERROR_TMP" "$log_dir_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"   
 	[[ -s $ERROR_TMP ]] && cat $ERROR_TMP > $LOG_DIR/$LOGFILE 2>&1
 	echo "$(date '+%Y_%m_%d %T') [Log directory] OK $LOG_DIR directory was created sucessfully. Will write log files in this directory." | tee -a $LOG_DIR/$LOGFILE 2>&1	
-    fi
 fi
 
 #
@@ -272,10 +264,9 @@ echo "$(date '+%Y_%m_%d %T') [Data root directory] Checking $DATA_ROOT_DIR direc
 if [[ -d $DATA_ROOT_DIR ]]; then
     echo "$(date '+%Y_%m_%d %T') [Data root directory] $DATA_ROOT_DIR exists and is a directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 else
-    echo "$(date '+%Y_%m_%d %T') [Data root directory] Failed $DATA_ROOT_DIR does not exist or is not a directory." | tee $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-    exit 1
+	data_root_dir_failed_msg="[Data root directory] Failed $DATA_ROOT_DIR does not exist or is not a directory."
+	echo -e $data_root_dir_failed_msg 2>&1 >$ERROR_TMP	
+	exit_on_error "$ERROR_TMP" "$data_root_dir_failed_msg" 1 "$LOG_DIR/$LOGFILE"
 fi
 
 #
@@ -287,11 +278,11 @@ if [[ -s $VARCO_SPLIT_MAP_USER_CONFIG ]]; then
 #if [[ -s $WORKING_DIR/$(basename ${0%.*})_user.config ]]; then # for testing purpose
     echo "$(date '+%Y_%m_%d %T') [Check config: user config file] OK User config file, $VARCO_SPLIT_MAP_USER_CONFIG, exists and is not empty." | tee -a $LOG_DIR/$LOGFILE 2>&1
 else
-    echo "$(date '+%Y_%m_%d %T') [Check config: user config file] Failed User config file, $VARCO_SPLIT_MAP_USER_CONFIG, does not exist or is empty" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	user_config_failed_msg="[Check config: user config file] Failed User config file, $VARCO_SPLIT_MAP_USER_CONFIG, does not exist or is empty."
+	echo -e "$user_config_failed_msg" 2>&1 >$ERROR_TMP
     echo "$(date '+%Y_%m_%d %T') [Check config: user config file] Warning: " | tee -a $LOG_DIR/$LOGFILE 2>&1
     echo -e "\t\t$PREREQUISITES_MSG" | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code 3." | tee -a $LOG_DIR/$LOGFILE 2>&1
-    exit 3
+    exit_on_error "$ERROR_TMP" "$user_config_failed_msg" 3 "$LOG_DIR/$LOGFILE"
 fi
 
 #
@@ -301,32 +292,36 @@ fi
 
 # 1. Copy user config file 
 echo "$(date '+%Y_%m_%d %T') [Check config: job user config file] Copying user config file into job directory ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
-cp $VARCO_SPLIT_MAP_USER_CONFIG $VARCO_SPLIT_MAP_USER_CONFIG_JOB 
+cp $VARCO_SPLIT_MAP_USER_CONFIG $VARCO_SPLIT_MAP_USER_CONFIG_JOB 2>$ERROR_TMP
+rtrn=$?
+cp_user_config_failed_msg="[Check config: job user config file] Failed copying user config file into job directory."
+exit_on_error "$ERROR_TMP" "$cp_user_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 echo "$(date '+%Y_%m_%d %T') [Check config: job user config file] Will use copied job user config file: $VARCO_SPLIT_MAP_USER_CONFIG_JOB" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 # 2. Load config parameters from job user config file
 echo "$(date '+%Y_%m_%d %T') [Check config: job user config file] Loading job user config parameters from $VARCO_SPLIT_MAP_USER_CONFIG_JOB file ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
-for cfg in $(get_config_sections $VARCO_SPLIT_MAP_USER_CONFIG_JOB 2>$ERROR_TMP; rtrn=$?); do
+load_user_config_failed_msg="[Check config: job user config file] Failed loading job user config parameters from $VARCO_SPLIT_MAP_USER_CONFIG_JOB file."
+for cfg in $(get_config_sections $VARCO_SPLIT_MAP_USER_CONFIG_JOB 2>$ERROR_TMP;); do
+	rtrn=$?	
+	exit_on_error "$ERROR_TMP" "$load_user_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
     echo -e "--- Config section [${cfg}] ---"
     unset $(set | awk -F= -v cfg="${cfg}" -v prefix="${NAMESPACE}" 'BEGIN { 
           cfg = toupper(cfg);
           prefix = toupper(prefix);
        }
-       /^prefix_cfg_/  { print $1 }' 2>>$ERROR_TMP) $(toupper ${NAMESPACE}_${cfg}_) 2>>$ERROR_TMP
-    set_config_params $VARCO_SPLIT_MAP_USER_CONFIG_JOB ${cfg} ${NAMESPACE} 2>>$ERROR_TMP
+       /^prefix_cfg_/  { print $1 }' 2>$ERROR_TMP) $(toupper ${NAMESPACE}_${cfg}_) 2>>$ERROR_TMP
+	rtrn=$?
+	exit_on_error "$ERROR_TMP" "$load_user_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+    set_config_params $VARCO_SPLIT_MAP_USER_CONFIG_JOB ${cfg} ${NAMESPACE} 2>$ERROR_TMP
     rtrn=$?
-    for params in $(set | grep ^$(toupper ${NAMESPACE}_${cfg}_) 2>>$ERROR_TMP); do
-	echo -e "$params"
+	exit_on_error "$ERROR_TMP" "$load_user_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+    for params in $(set | grep ^$(toupper ${NAMESPACE}_${cfg}_) 2>$ERROR_TMP); do
+		echo -e "$params"
     done
+	rtrn=$?
+	exit_on_error "$ERROR_TMP" "$load_user_config_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 done
-if [[ ! -s $ERROR_TMP ]]; then
-    echo "$(date '+%Y_%m_%d %T') [Check config: job user config file] OK User config file, $VARCO_SPLIT_MAP_USER_CONFIG_JOB, was loaded successfully." | tee -a $LOG_DIR/$LOGFILE 2>&1
-else
-    echo "$(date '+%Y_%m_%d %T') [Check config: job user config file] Failed loading user config file, $VARCO_SPLIT_MAP_USER_CONFIG_JOB" | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-    exit $rtrn
-fi
+echo "$(date '+%Y_%m_%d %T') [Check config: job user config file] OK User config file, $VARCO_SPLIT_MAP_USER_CONFIG_JOB, was loaded successfully." | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 #
 # Check for parameters validity
@@ -342,7 +337,10 @@ fi
 #
 #VARCO_SPLIT_MAP_batch_size=8 # for testing purpose
 echo "$(date '+%Y_%m_%d %T') [Override user config: batch_size] Testing if override batch_size user defined config parameter value is needed ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
-MAX_BATCH_SIZE=$[ $MAX_NUMB_CORES_ALLOWED/$VARCO_GSNAP_t ]
+MAX_BATCH_SIZE=$[ $MAX_NUMB_CORES_ALLOWED/$VARCO_GSNAP_t ] 2>$ERROR_TMP
+rtrn=$?
+max_batch_size_failed_msg="[Override user config: batch_size] Failed computing max batch size."
+exit_on_error "$ERROR_TMP" "$max_batch_size_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 echo -e "max_cores=$MAX_NUMB_CORES" | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo -e "max_cores_allowed=$MAX_NUMB_CORES_ALLOWED" | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo -e "threads_by_sample=$VARCO_GSNAP_t" | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -353,7 +351,10 @@ if [[ $VARCO_SPLIT_MAP_batch_size -le $MAX_BATCH_SIZE ]]; then
 	echo "$(date '+%Y_%m_%d %T') [Override user config: batch_size] Keep batch_size user defined config parameter value: $VARCO_SPLIT_MAP_batch_size" | tee -a $LOG_DIR/$LOGFILE 2>&1
 else
 	echo "$(date '+%Y_%m_%d %T') [Override user config: batch_size] Need to override batch_size user defined config parameter value." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	VARCO_SPLIT_MAP_batch_size=$[$MAX_BATCH_SIZE/2]
+	VARCO_SPLIT_MAP_batch_size=$[$MAX_BATCH_SIZE/2] 2>$ERROR_TMP
+	rtrn=$?
+	batch_size_failed_msg="[Override user config: batch_size] Failed computing batch size."
+	exit_on_error "$ERROR_TMP" "$batch_size_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 	echo "$(date '+%Y_%m_%d %T') [Override user config: batch_size] Override batch_size user defined config parameter value: $VARCO_SPLIT_MAP_batch_size." | tee -a $LOG_DIR/$LOGFILE 2>&1
 fi
 
@@ -367,10 +368,10 @@ fi
 # 1. list all available subdirs in data root dir
 echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Searching for fastq sample subdirs ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 all_subdirs=($(find $DATA_ROOT_DIR -maxdepth 1 -type d | egrep -v ^$DATA_ROOT_DIR$ 2>$ERROR_TMP))
-if [[ -s $ERROR_TMP ]]; then 
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1; 
-    exit 1
-fi
+rtrn=$?
+all_subdirs_failed_msg="[Fastq subdirs] Failed listing all sub-directories in $DATA_ROOT_DIR directory."
+exit_on_error "$ERROR_TMP" "$all_subdirs_failed_msg" $rtrn "$LOG_DIR/$LOGFILE" 
+
 #read -a all_subdirs_arr echo <<< $(echo -e $all_subdirs | tr " " "\n")
 echo -e "all subdirectories count: ${#all_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo -e "all subdirectories list: ${all_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -380,20 +381,15 @@ echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Filtering subdirs with include patt
 #VARCO_DATA_include_sample_subdirs="^D.*,XA,XC" # for testing purpose
 include_patterns=$(echo ${VARCO_DATA_include_sample_subdirs//,/|})
 echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] include_patterns=($include_patterns) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+inc_subdirs_failed_msg="[Fastq subdirs] Failed filtering subdirs with include pattern(s): $include_patterns"
 inc_subdirs=($(for subdir in "${all_subdirs[@]}"; do
     res=$(echo $(basename $subdir) | egrep "($include_patterns)" 2>$ERROR_TMP)
-    rtrn=$?
     [[ -n $res ]] && echo -e "$subdir" 
 done 2>>$ERROR_TMP))
-if [[ -s $ERROR_TMP ]]; then
-        echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Failed An error occured while filtering for subdirs to include." | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-    exit $rtrn
-else
-    echo -e "include pattern(s) subdirectories count: ${#inc_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo -e "include pattern(s) subdirectories list: ${inc_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
-fi
+[[ -s $ERROR_TMP ]] && rtrn=1 || rtrn=0
+exit_on_error "$ERROR_TMP" "$inc_subdirs_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+echo -e "include pattern(s) subdirectories count: ${#inc_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "include pattern(s) subdirectories list: ${inc_subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 # 3. Filter subdirs with exclude pattern(s)
 echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Filtering subdirs with exclude pattern(s) ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -407,19 +403,15 @@ if [[ -n $VARCO_DATA_exclude_sample_subdirs ]]; then
 	    rtrn=$?
 	    [[ -n $res ]] && echo -e "$subdir" 
 	    done 2>>$ERROR_TMP))
+	rtrn=$?
+	excl_subdirs_failed_msg="[Fastq subdirs] Failed filtering subdirs with exclude pattern(s): $exclude_patterns"
+	exit_on_error "$ERROR_TMP" "$excl_subdirs_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 else
     echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] No exclude patterns." | tee -a $LOG_DIR/$LOGFILE 2>&1
     subdirs=("${inc_subdirs[@]}")
 fi
-if [[ -s $ERROR_TMP ]]; then
-    echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Failed An error occured while filtering for subdirs to exclude." | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $rtrn." | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-    echo "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $ERROR_TMP." | tee -a $LOG_DIR/$LOGFILE 2>&1
-    exit $rtrn
-else
-    echo -e "include pattern(s) subdirectories count: ${#subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
-    echo -e "include pattern(s) subdirectories list: ${subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
-fi
+echo -e "include pattern(s) subdirectories count: ${#subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
+echo -e "include pattern(s) subdirectories list: ${subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE
 
 # 4. Filter subdirs for fastq files
 echo "$(date '+%Y_%m_%d %T') [Fastq subdirs] Filtering subdirs for fastq files ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -998,9 +990,10 @@ for b in $(seq 1 $[ $batches ]); do
 	if [[ $errs == 0 ]]; then
 		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] all gsnap processes for batch #$b finished without errors." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 	else
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] some errors occured while gsnap processing samples for batch #$b." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		mapping_err_failed_msg="[Batch mode: mapping] some errors occured while gsnap processing samples for batch #$b."
+		echo -e "$(date '+%Y_%m_%d %T') $mapping_err_failed_msg" | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] refer to $CURRENT_MAPPING_ERROR file for details." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-		exit 1
+		exit_on_error "$CURRENT_MAPPING_ERROR" "$mapping_err_failed_msg" 1 "$LOG_DIR/$LOGFILE"
 	fi
 
 	# 1.6 Conversion: sam to sorted bam
@@ -1096,7 +1089,9 @@ for b in $(seq 1 $[ $batches ]); do
 						echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] output: $cmd_out" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 						cmd_cli="$cmd $opts $CURRENT_MAPPING_DIR/$CURRENT_MAPPING_SAM > $CURRENT_MAPPING_DIR/$cmd_out 2>>$CURRENT_CONVERSION_ERROR &"
 					else
-						debug "$CURRENT_MAPPING_DIR/$CURRENT_MAPPING_SAM file does not exist or is empty." | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1; exit 1
+						sam_out_file_failed_msg="$CURRENT_MAPPING_DIR/$CURRENT_MAPPING_SAM file does not exist or is empty." 
+						debug $sam_out_file_failed_msg | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1;
+						exit_on_error "$CURRENT_CONVERSION_LOGFILE" "$sam_out_file_failed_msg" 3 "$LOG_DIR/$LOGFILE"
 					fi
 				;;
 				"$sort_command")
@@ -1107,7 +1102,9 @@ for b in $(seq 1 $[ $batches ]); do
 						echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] output: $cmd_out" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
 						cmd_cli="$cmd $opts $CURRENT_MAPPING_DIR/$bam_out $CURRENT_MAPPING_DIR/$cmd_out 2>>$CURRENT_CONVERSION_ERROR &"
 					else
-						debug "$CURRENT_MAPPING_DIR/$bam_out file does not exist or is empty." | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1; exit 1
+						bam_out_file_failed_msg="$CURRENT_MAPPING_DIR/$bam_out file does not exist or is empty." 
+						debug $bam_out_file_failed_msg | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1;
+						exit_on_error "$CURRENT_CONVERSION_LOGFILE" "$bam_out_file_failed_msg" 3 "$LOG_DIR/$LOGFILE"
 					fi
 				;;	
 				"$index_command")
@@ -1118,7 +1115,9 @@ for b in $(seq 1 $[ $batches ]); do
 						echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] output: $cmd_out" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
 						cmd_cli="$cmd $opts $CURRENT_MAPPING_DIR/$sorted_bam_out 2>>${CURRENT_CONVERSION_ERROR} &"
 					else
-						debug "$CURRENT_MAPPING_DIR/$sorted_bam_out file does not exist or is empty." | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1; exit 1
+						bam_sorted_out_file_failed_msg="$CURRENT_MAPPING_DIR/$sorted_bam_out file does not exist or is empty." 
+						debug $bam_sorted_out_file_failed_msg | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1;
+						exit_on_error "$CURRENT_CONVERSION_LOGFILE" "$bam_sorted_out_file_failed_msg" 3 "$LOG_DIR/$LOGFILE"
 					fi
 				;;
 				*)
@@ -1136,7 +1135,9 @@ for b in $(seq 1 $[ $batches ]); do
 				echo -e $pid >$CURRENT_CONVERSION_PID 2>${ERROR_TMP}
 				PIDS_ARR=("${PIDS_ARR[@]}" "$pid")
 			else
-				debug "command name, $cmd, was not processed. cmd cli is null." | tee -a ${CURRENT_CONVERSION_ERROR} 2>&1 | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1; exit 1
+				cmd_cli_failed_msg="command name, $cmd, was not processed. cmd cli is null." 
+				debug $cmd_cli_failed_msg | tee -a ${CURRENT_CONVERSION_ERROR} 2>&1 | tee -a $ERROR_TMP 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1;
+				exit_on_error "CURRENT_CONVERSION_ERROR" "$cmd_cli_failed_msg" 1 "$LOG_DIR/$LOGFILE"
 			fi
 
 	# Last batch sample: have a break!
@@ -1235,12 +1236,13 @@ for b in $(seq 1 $[ $batches ]); do
 			[[ $last == "TRUE" ]] && break   
 		done
 
-		if [[ $errs == 0 ]]; then
+		if [[ $errs == 0 ]]; then		
 			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] all $cmd conversion processes for batch #$b finished without errors." | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		else
-			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] some errors occured while $cmd processing samples for batch #$b." | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			conversion_err_failed_msg="[Batch mode] some errors occured while $cmd processing samples for batch #$b."
+			echo -e "$(date '+%Y_%m_%d %T') $conversion_err_failed_msg" | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 			echo -e "$(date '+%Y_%m_%d %T') [Batch mode] refer to $CURRENT_CONVERSION_ERROR file for details." | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-			exit 1
+			exit_on_error "$CURRENT_CONVERSION_LOGFILE" "$conversion_err_failed_msg" 1 "$LOG_DIR/$LOGFILE"
 		fi
 	done
 
