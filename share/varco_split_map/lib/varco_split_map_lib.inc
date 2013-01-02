@@ -274,7 +274,53 @@ sendEmail()
 	[[ -n "$@" ]] && files=("$@")
 	export EMAIL="Joseph.Tran@versailles.inra.fr"
 
-	echo -e "$msg" | mutt -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
+	send_email_config_msg=$(echo -e "## Job user config file\nHere are the configuration parameters used for running this job:\n$(cat $VARCO_SPLIT_MAP_USER_CONFIG_JOB | egrep -v "^$")")
+
+	send_email_log_msg=$(echo -e "# Main job log file\nHere are the sampled last lines logged from $(readlink -f "$LOG_DIR/$LOGFILE") log file:\n...\n$(tail -n 10 $LOG_DIR/$LOGFILE)")
+
+	send_email_err_msg=$(echo -e "# Main job error log file\nHere are the sampled last lines logged from $(readlink -f $ERROR_TMP) log file\n...\n$(tail -n 10 $ERROR_TMP)")
+
+	send_email_mapping_msg=$(echo -e "# Last sample batch mapping log file\nHere are the sampled last lines logged from $(readlink -f $CURRENT_MAPPING_LOGFILE) log file\n...\n$(tail -n 10 $CURRENT_MAPPING_LOGFILE)")
+
+	send_email_conversion_msg=$(echo -e "# Last sample batch format conversion log file\nHere are the sampled last lines logged from $(readlink -f $CURRENT_CONVERSION_LOGFILE) log file\n...\n$(tail -n 10 $CURRENT_CONVERSION_LOGFILE)")
+
+	send_email_msg="Dear $(getent passwd | grep $USER | gawk -F: '{print $5}'),\n
+You receive this email because you ran the $(basename ${0}) script on ${DATE} on $HOSTNAME.\n
+# Message
+$msg\n
+# Job infos
+Working directory: $(readlink -f $WORKING_DIR)
+Job directory: $(readlink -f "$WORKING_DIR/$JOB_TAG")
+Executed command: $EXECUTED_COMMAND
+Elapsed time: $(echo |awk -v time="$SECONDS" '{print strftime("%Hh:%Mm:%Ss", time, 1)}')\n
+$([[ -s $VARCO_SPLIT_MAP_USER_CONFIG_JOB ]] && echo -e "$send_email_config_msg")
+
+# Data infos
+Data root directory: $(readlink -f "$DATA_ROOT_DIR")
+All sub-directories count: "${#all_subdirs[@]}"
+Include pattern sub-directories count: "${#inc_subdirs[@]}"
+Filtered excluded but fastq sub-directories count: "${#fastq_subdirs[@]}"
+Filtered excluded but fastq sub-directories listing: "${fastq_subdirs[@]}"\n
+# Batches infos
+Total number of batches: $batches
+Batch size: $VARCO_SPLIT_MAP_batch_size 
+$(if (( "$b" < "$batches" )); then
+	export batch_prefix=Current
+else
+	export batch_prefix=Last
+fi
+echo -e "$batch_prefix batch "id:" $b"
+echo -e "$batch_prefix batch samples listing: ${samples_batch_dirs[@]}")\n
+# LOGS
+$([[ -s $LOG_DIR/$LOGFILE ]] && echo -e "$send_email_log_msg")\n
+$([[ -s $ERROR_TMP ]] && echo -e "$send_email_err_msg")\n
+$([[ -s $CURRENT_MAPPING_LOGFILE ]] && echo -e "$send_email_mapping_msg")\n
+$([[ -s $CURRENT_CONVERSION_LOGFILE ]] && echo -e "$send_email_conversion_msg")\n
+
+For any contact, please reply to this-email.\n
+$AUTHOR_INFOS"
+
+	echo -e "$send_email_msg" | mutt -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
 
 }
 
