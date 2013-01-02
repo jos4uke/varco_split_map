@@ -226,7 +226,7 @@ fi
 # 
 echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 cpu_load_failed_msg="[CPU load] Failed checking for average cpu load."	
-until [[ $(isCpuAvailable 2 2 2>{ERROR_TMP})  == "TRUE" ]]; do
+until [[ $(isCpuAvailable 2 2 2>${ERROR_TMP})  == "TRUE" ]]; do
 	rtrn=$?
 	exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 	echo -e "." | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -527,7 +527,7 @@ for b in $(seq 1 $[ $batches ]); do
 	if [[ $VARCO_SPLIT_MAP_check_cpu_overload == "TRUE" ]]; then
 		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 		cpu_load_failed_msg="[CPU load] Failed checking for average cpu load before running on samples batch #$b."	
-		until [[ $(isCpuAvailable 2 2 2>{ERROR_TMP})  == "TRUE" ]]; do
+		until [[ $(isCpuAvailable 2 2 2>${ERROR_TMP})  == "TRUE" ]]; do
 			rtrn=$?
 			exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 			echo -e "." | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -1139,7 +1139,7 @@ for b in $(seq 1 $[ $batches ]); do
 		echo -e "$(date '+%Y_%m_%d %T') [Batch mode :conversion] $cmd pids count: ${#PIDS_ARR[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $cmd pids list: ${PIDS_ARR[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1		
 		for p in "${PIDS_ARR[@]}"; do
-			echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>{ERROR_TMP})
+			echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>${ERROR_TMP})
 			rtrn=$?
 			pid_list_failed_msg="[Batch mode: conversion] Failed listing $cmd process using its pid."
 			exit_on_error "$ERROR_TMP" "$pid_list_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
