@@ -490,7 +490,29 @@ testFailedIsDiskSpaceAvailable()
 	[[ -s ${stderrF} ]] && (echo -e "stderr output:"; cat ${stderrF} 2>&1)
 }
 
+#-------------------------------
+# testFailedSendEmail
+#
+testFailedSendEmail()
+{
+	recipient="Joseph.Tran@versailles.inra.fr"
+	subject_noattach="Test sendEmail without attachment files"
+	subject_attach="Test sendEmail with attachment files"
+	subject_error="Test sendEmail with error in subject"
+	message="This is a test message."
+	files=($(ls -d -1 $TEST_DATA_ROOT_DIR/DG/*))
 
+	# without attachment files
+	sendEmail $recipient "$subject_noattach" "$message"
+
+	# with attachment files
+	sendEmail $recipient "$subject_attach" "$message" "${files[@]}"
+
+	# with error in subject
+	sendEmail $recipient "$subject_error" "$message"
+
+	# assertions: TODO
+}
 
 
 

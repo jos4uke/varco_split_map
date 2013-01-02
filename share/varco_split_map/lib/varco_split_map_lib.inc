@@ -262,6 +262,21 @@ isDiskSpaceAvailable()
 	fi
 }
 
+#-------------------------------------------------------------------------
+# Function : sendEmail recipient subject message [files_to_attach]
+# Purpose  : send an email
+sendEmail()
+{
+	recipient=$1
+	subject=$2
+	msg=$3
+	shift 3
+	[[ -n "$@" ]] && files=("$@")
+	export EMAIL="Joseph.Tran@versailles.inra.fr"
+
+	echo -e "$msg" | mutt -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
+
+}
 
 
 
