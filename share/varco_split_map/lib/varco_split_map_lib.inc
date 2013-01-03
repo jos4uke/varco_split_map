@@ -121,7 +121,7 @@ set_config_params()
           patternConfig = "\\[" Config "]";
        }
        toupper($0)  ~ patternConfig,(/\[/ && toupper($0) !~ patternConfig)  { 
-          if (/\[/ || NF <2) next;
+          if (/^#/ || /\[/ || NF <2) next;
           sub(/^[[:space:]]*/, "");
           sub(/[[:space:]]*=[[:space:]]/, "=");
           print Prefix Config"_"$0;
