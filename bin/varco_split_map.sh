@@ -137,11 +137,11 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 http://www.cecill.info/licences/Licence_CeCILL_V2-en.txt
 
-Usage: $(basename $0) samples_root_dir job_tag recipient_email_addr
+Usage: $(basename $0) samples_root_dir job_tag [recipient_email_addr]
 
-Arguments: samples_root_dir      Path to the parent folder containing the reads samples subdirectories 
-           job_tag                <String> Prefix to attach to any output files (without space)
-		   [recipient_email_addr] Valid email address to send log and error messages to (optional)
+Arguments: samples_root_dir        Path to the parent folder containing the reads samples subdirectories 
+           job_tag                 <String> Prefix to attach to any output files (without space)
+           [recipient_email_addr]  Valid email address to send log and error messages to (optional)
 
 Description: This script performs reads mapping in batch mode by splitting
              given samples in several batches and run sequentially each batch 
@@ -149,15 +149,20 @@ Description: This script performs reads mapping in batch mode by splitting
 
 Pre-requisites: ${PREREQUISITES_MSG}
 
-User Configuration File: here is the main configuration sections and their corresponding parameters
+User Configuration File: 
+  Remarks:
+  - If one line begins with a "#", it will be considered as a comment. Use comment to disable the following options.
+  - Note that, when option value is boolean (TRUE|FALSE), the option can be disabled by setting its value to FALSE.
+
+  Here is the main configuration sections and their corresponding parameters:
   [split_map] section
     - check_cpu_overload (default=TRUE)
                          This option controls if cpu overload checking has to be performed.
-                         If TRUE, this script will run only if cpu average load did not exceed 50% 
-                         in the last 1, 5 and 15 minutes. This test is performed before running the script,
-                         and for each batch. If available cores (#max_cores_limit-#cpu_load) is greater or equal
-						 than maximum allowed cores (needed to perform the job), the script will wait for 5 seconds
-                         before testing again cpu average load. TODO: put some timeout else server will crash
+                         If TRUE, this script will run only if cpu average load in the last 1, 5 and 15 minutes   
+                         left sufficient cores to run the job. This test is performed before running the script,
+                         and before each batch. If available cores (#max_cores_limit-#cpu_load) is lower or equal
+                         than maximum allowed cores (needed to perform the job), the script will wait for 5 seconds
+                         before testing again cpu average load.
     - batch_size (default=4)
                          This option controls the number of samples for each batch. 
                          Its value is determined dynamically if the user value exceeds the max batch size. 
@@ -167,9 +172,9 @@ User Configuration File: here is the main configuration sections and their corre
                          to 50% of max number of cores available.
                          If batch_size lower or equal to max batch size, then use batch_size value.
                          Else, batch_size equals half max batch size.
-    - clean (default=FALSE)
-                         This option allows to clean each sample output directory by removing sam and bam files,
-                         leaving only sorted and indexed bam files.
+    - clean (default=TRUE)
+                         This option allows to clean each sample output directory by removing sam file,
+                         leaving only unsorted, sorted and indexed bam files.
 
   [data] section
     - include_sample_subdirs (default=^.* equivalent to all sample subdirs)
@@ -193,26 +198,40 @@ User Configuration File: here is the main configuration sections and their corre
     - B (default=4)
     - t (default=2)
     - D (default=/data/temp_projects/AZM/INDEX)
+	
+	The v option is commented by default. Its value is currently set to ALY2H_1_Bnm1.uniq.filt.SNPv2.
+	Enable the option by uncommenting the line.
+	Feel free to add gsnap options, using the given syntax, 'option_name'='value'.
+	When option_name do not expect any value, set the option_name value with boolean to TRUE (enable), FALSE (disable).
 
   [samtools_view]
     Please refer to samtools vew documentation: samtools view --help
     - b (default=TRUE)
     - S (default=TRUE)
 
+	Feel free to add samtools view options, using the given syntax, 'option_name'='value'.
+	When option_name do not expect any value, set the option_name value with boolean to TRUE (enable), FALSE (disable).
+
   [samtools_sort]
     Please refer to samtools vew documentation: samtools sort --help
     No current options are available.
 
+	Feel free to add samtools sort options, using the given syntax, 'option_name'='value'.
+	When option_name do not expect any value, set the option_name value with boolean to TRUE (enable), FALSE (disable).
+
   [samtools_index]
     Please refer to samtools vew documentation: samtools index --help
     No current options are available.
+
+	Feel free to add samtools index options, using the given syntax, 'option_name'='value'.
+	When option_name do not expect any value, set the option_name value with boolean to TRUE (enable), FALSE (disable).
 
 Notes: 1. Current mapper is gsnap 
           $(gsnap --version 2>&1 | awk -F"\n" 'BEGIN{info=""}; {info=(info "\n\t" $1)}; END{printf info}')
        2. Current sam toolkit is samtools
           $(samtools 2>&1 | egrep 'Program|Version'| awk -F"\n" 'BEGIN{info=""}; {info=(info "\n\t" $1)}; END{printf info}')
 
-$AUTHOR_INFOS
+$(echo -ne $AUTHOR_INFOS)
 
 ";
 exit 1; }
