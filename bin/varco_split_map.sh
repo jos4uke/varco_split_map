@@ -888,6 +888,13 @@ for b in $(seq 1 $[ $batches ]); do
 		CURRENT_MAPPING_PID=$CURRENT_MAPPING_TMP/$CURRENT_SAMPLE_NAME.pid	
 		gsnap_cli="gsnap $opts $CURRENT_DATA_SAMPLE_DIR/$CURRENT_FASTQ_FORWARD $CURRENT_DATA_SAMPLE_DIR/$CURRENT_FASTQ_REVERSE >$CURRENT_MAPPING_DIR/$gsnap_out 2>${CURRENT_MAPPING_ERROR} &"
 
+		# append time monitoring support
+		timeCmd=$(buildTimeCmd "$command_name" "$CURRENT_MAPPING_LOG" 2>{ERROR_TMP})
+		rtrn=$?
+		time_cmd_failed_msg="[Batch mode: mapping] Failed building time command for use with $command_name."		
+		exit_on_error "$ERROR_TMP" "$time_cmd_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+		gsnap_cli="$timeCmd $gsnap_cli"
+
 	# 1.5.3 Run the command	
 		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Executing $command_name mapping command line for current batch sample $CURRENT_BATCH_SUBDIR ..." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1  2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] $command_name mapper version: \n$MAPPER_VERSION" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -965,6 +972,10 @@ for b in $(seq 1 $[ $batches ]); do
 		CURRENT_MAPPING_ERROR=$CURRENT_MAPPING_LOG/$CURRENT_SAMPLE_NAME\_mapping_b$b\_s$s\_err.log
 		CURRENT_MAPPING_LOGFILE=$CURRENT_MAPPING_LOG/$CURRENT_SAMPLE_NAME\_mapping_b$b\_s$s.log
 		CURRENT_MAPPING_PID=$CURRENT_MAPPING_TMP/$CURRENT_SAMPLE_NAME.pid
+
+	# copy time monitoring on mapping command to logs
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Time monitoring on mapping command, $command_name:" | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		cat $CURRENT_MAPPING_LOG/${command_name}_time.log 2>&1 | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 	# check for errors
 		pid_status=$(egrep "exited" ${ERROR_TMP} 2>&1 | egrep $(cat $CURRENT_MAPPING_PID) 2>&1)
@@ -1125,6 +1136,13 @@ for b in $(seq 1 $[ $batches ]); do
 			esac
 	## run cli
 			if [[ -n $cmd_cli ]]; then
+	### append time monitoring support
+				timeCmd=$(buildTimeCmd "${cmd// /_}" "$CURRENT_MAPPING_LOG" 2>{ERROR_TMP})
+				rtrn=$?
+				time_cmd_failed_msg="[Batch mode: conversion] Failed building time command for use with $cmd."		
+				exit_on_error "$ERROR_TMP" "$time_cmd_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+				cmd_cli="$timeCmd $cmd_cli"
+
 				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Executing command: ${cmd_cli}" | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1| tee -a $LOG_DIR/$LOGFILE 2>&1
 				eval "$cmd_cli" 2>${ERROR_TMP}
 				pid=$!
@@ -1215,7 +1233,11 @@ for b in $(seq 1 $[ $batches ]); do
 			CURRENT_CONVERSION_ERROR=$CURRENT_MAPPING_LOG/$CURRENT_MAPPING_SAM_BASE\_conversion_b$b\_s$s\_err.log
 			CURRENT_CONVERSION_LOGFILE=$CURRENT_MAPPING_LOG/$CURRENT_MAPPING_SAM_BASE\_conversion_b$b\_s$s.log
 
-		# check for errors
+	# copy time monitoring on mapping command to logs
+			echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Time monitoring on conversion command, $cmd:" | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			cat $CURRENT_MAPPING_LOG/${cmd// /_}_time.log 2>&1 | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+
+	# check for errors
 			pid_status=$(egrep "exited" ${ERROR_TMP} 2>&1 | egrep $(cat $CURRENT_CONVERSION_PID) 2>&1)
 
 			if [[ -z $(echo -e $pid_status 2>&1 | egrep "zero exit status") ]]; then
