@@ -270,6 +270,7 @@ sendEmailBasic()
 	recipient=$1
 	subject=$2
 	msg=$3
+	local files=()
 	shift 3
 	[[ -n "$@" ]] && files=("$@")
 	export EMAIL="Joseph.Tran@versailles.inra.fr"
