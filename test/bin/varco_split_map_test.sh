@@ -537,7 +537,25 @@ testFailedBuildTimeCmd()
 	[[ -s ${stderrF} ]] && (echo -e "stderr output:"; cat ${stderrF} 2>&1)
 }
 
-
+#-------------------------------
+# testFailedExitOnTimeout
+#
+testFailedExitOnTimeout()
+{
+	sleep 20 &
+	pid=$!
+	timeout=3
+	while kill -0 $pid 2>${stderrF}; do
+		echo "before timeout: $timeout"
+		timeout=$(exit_on_timeout $pid "$TEST_OUTPUT_DIR/kill_$pid.log" $timeout 1 1 2>>${stderrF})
+		echo "after timeout: $timeout"	
+	done
+	
+	assertTrue "Expected output to stdout." "[ -s $TEST_OUTPUT_DIR/kill_$pid.log ]"
+	[[ -s $TEST_OUTPUT_DIR/kill_$pid.log ]] && (echo -e "kill log output:"; cat $TEST_OUTPUT_DIR/kill_$pid.log 2>&1)
+	assertTrue "Expected output to stderr." "[ -s ${stderrF} ]"
+	[[ -s ${stderrF} ]] && (echo -e "stderr output:"; cat ${stderrF} 2>&1)
+}
 
 
 #================

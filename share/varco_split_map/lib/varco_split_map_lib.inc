@@ -359,7 +359,48 @@ exit status               : %x"
 	echo -e "/usr/bin/time -f \"$format\" -o $log_dir/${cmd_name// /_}_time.log"
 }
 
+#-------------------------------------------------------------------------
+# Function : exit_on_timeout pid log_file timeout interval delay 
+# Purpose  : force a process with given pid to exit if running time exceeds given timeout
+exit_on_timeout()
+{
+	# default		
+	declare -i DEFAULT_TIMEOUT=9
+	declare -i DEFAULT_INTERVAL=1
+	declare -i DEFAULT_DELAY=1
 
+	# set default
+	declare -i timeout=DEFAULT_TIMEOUT
+	# Interval between checks if the process is still alive.
+	declare -i interval=DEFAULT_INTERVAL
+	# Delay between posting the SIGTERM signal and destroying the process by SIGKILL.
+	declare -i delay=DEFAULT_DELAY
+
+	# args
+	pid=$1
+	log=$2
+	# options
+	[[ -n $3 ]] && timeout=$3
+	[[ -n $4 ]] && interval=$4
+	[[ -n $5 ]] && delay=$5
+
+	# kill -0 pid   Exit code indicates if a signal may be sent to $pid process.# 
+	((t = timeout))	
+	if ((t > 0)); then
+		sleep $interval
+		kill -0 $pid || return 0
+		((t -= interval))
+		echo $t
+	else
+	# Be nice, post SIGTERM first.
+    # The 'exit 0' below will be executed if any preceeding command fails.
+		echo -e "$(date '+%Y_%m_%d %T') [Timeout exit] process infos:\n$(ps aux | grep $pid | grep -v grep)" >>$log
+		echo -e "$(date '+%Y_%m_%d %T') [Timeout exit] Process pid=$pid killed." >>$log
+		kill -s SIGTERM $pid && kill -0 $pid || return 0
+		sleep $delay
+		kill -s SIGKILL $pid
+	fi
+}
 
 
 
