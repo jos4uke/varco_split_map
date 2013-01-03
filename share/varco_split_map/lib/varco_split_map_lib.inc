@@ -350,7 +350,7 @@ buildTimeCmd()
 elapsed real time         : %E [hours:]minutes:seconds,
 used time by user         : %U seconds,
 used time by system       : %S seconds,
-cpu percent               : %P \%,
+cpu percent               : %P,
 average total memory      : %K KiloBytes,
 average size of data area : %D KiloBytes, 
 file inputs               : %I,
