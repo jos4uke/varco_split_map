@@ -51,7 +51,9 @@ MAX_NUMB_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 MAX_NUMB_CORES_ALLOWED=$[$MAX_NUMB_CORES/2]
 MAX_BATCH_SIZE=0
 
+CPU_CHECK_TIMEOUT=57600
 CPU_CHECK_INTERVAL=5
+CPU_CHECK_DELAY=5
 
 DATA_EXPANSION_FACTOR=2
 
@@ -226,11 +228,12 @@ fi
 # 
 echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 cpu_load_failed_msg="[CPU load] Failed checking for average cpu load."	
+timeout=$CPU_CHECK_TIMEOUT
 until [[ $(isCpuAvailable 2 2 2>${ERROR_TMP})  == "TRUE" ]]; do
 	rtrn=$?
 	exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 	echo -e "." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	sleep $CPU_CHECK_INTERVAL
+	timeout=$(exit_on_timeout $$ "$LOG_DIR/$LOGFILE" $timeout $CPU_CHECK_INTERVAL $CPU_CHECK_DELAY 2>>${ERROR_TMP})
 done
 rtrn=$?
 exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
@@ -527,11 +530,12 @@ for b in $(seq 1 $[ $batches ]); do
 	if [[ $VARCO_SPLIT_MAP_check_cpu_overload == "TRUE" ]]; then
 		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 		cpu_load_failed_msg="[CPU load] Failed checking for average cpu load before running on samples batch #$b."	
+		timeout=$CPU_CHECK_TIMEOUT		
 		until [[ $(isCpuAvailable 2 2 2>${ERROR_TMP})  == "TRUE" ]]; do
 			rtrn=$?
 			exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 			echo -e "." | tee -a $LOG_DIR/$LOGFILE 2>&1
-			sleep $CPU_CHECK_INTERVAL
+			timeout=$(exit_on_timeout $$ "$LOG_DIR/$LOGFILE" $timeout $CPU_CHECK_INTERVAL $CPU_CHECK_DELAY 2>>${ERROR_TMP})
 		done
 		rtrn=$?
 		exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
