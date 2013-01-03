@@ -35,7 +35,7 @@ RECIPIENT=$3
 
 EXECUTED_COMMAND="$0 $*"
 
-DATE=$(date '+%Y_%m_%d_%T') # TODO: change to '+%F_%Hh%Mm%Ss'
+DATE=$(date '+%F_%Hh%Mm%Ss')
 WORKING_DIR=$(pwd)
 LOGFILE=${JOB_TAG}_${USER}_$DATE.log
 
@@ -1308,7 +1308,7 @@ done
 
 
 #
-# Clean: TODO
+# Clean:
 #
 
 # unset environment variables with used namespace
@@ -1319,9 +1319,6 @@ unset $(set | awk -F= -v cfg="${cfg}" -v prefix="${NAMESPACE}" 'BEGIN {
        }
        /^prefix_cfg_/  { print $1 }') $(toupper ${prefix}_${cfg}_)
 echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
-
-# find and remove all sam and corresponding bam files: TODO
-
 
 #=====
 # END
