@@ -125,6 +125,10 @@ testFailedWaitingCliProcesses()
 	# test variables
 	samples=("DG" "DI")
 	pids_arr=()
+	WAITALL_TIMEOUT=86400
+	WAITALL_INTERVAL=60
+	WAITALL_DELAY=60
+	
 	# test functions
 	exit_on_error()
 	{
@@ -255,8 +259,8 @@ testFailedWaitingCliProcesses()
 		echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>${stderrF})
 	done
 	exit_on_error
-	WAITALL_DELAY=60
-	waitall "${pids_arr[@]}" 2>${stderrF}
+	#waitall "${pids_arr[@]}" 2>${stderrF}
+	waitalluntiltimeout "${pids_arr[@]}" 2>${stderrF}
 	egrep "exited" ${stderrF} 2>&1 | tee -a ${stdoutF} 2>&1
 	cat ${stdoutF} 2>&1 | tee -a $TEST_PREFIX_LOG >/dev/null
 
@@ -400,8 +404,8 @@ testFailedWaitingCliProcesses()
 			echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>${stderrF})
 		done
 		exit_on_error
-		WAITALL_DELAY=60
-		waitall "${pids_arr[@]}" 2>${stderrF}
+		#waitall "${pids_arr[@]}" 2>${stderrF}
+		waitalluntiltimeout "${pids_arr[@]}" 2>${stderrF}
 		egrep "exited" ${stderrF} 2>&1 | tee -a ${stdoutF} 2>&1
 		cat ${stdoutF} 2>&1 >>${TEST_PREFIX_LOG}
 		#cat ${stderrF} 2>&1 >>${TEST_PREFIX_ERR}
