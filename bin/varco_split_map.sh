@@ -78,6 +78,7 @@ MAX_BATCH_SIZE=0
 CPU_CHECK_TIMEOUT=86400
 CPU_CHECK_INTERVAL=5
 CPU_CHECK_DELAY=5
+CPU_CHECK_TIMEOUT_HR=$(echo $CPU_CHECK_TIMEOUT | gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')
 
 DATA_EXPANSION_FACTOR=2
 
@@ -85,6 +86,7 @@ PIDS_ARR=()
 WAITALL_TIMEOUT=86400
 WAITALL_INTERVAL=60
 WAITALL_DELAY=60
+WAITALL_TIMEOUT_HR=$(echo $WAITALL_TIMEOUT | gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')
 
 LOG_DIR=$JOB_TAG/"log"
 QC_TRIM_DIR="QC_TRIM"
@@ -274,7 +276,7 @@ fi
 #
 # Test for cpu average load
 # 
-echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load every $CPU_CHECK_INTERVAL seconds until $CPU_CHECK_TIMEOUT_HR timeout ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 cpu_load_failed_msg="[CPU load] Failed checking for average cpu load."	
 timeout=$CPU_CHECK_TIMEOUT
 until [[ $(isCpuAvailable 2 2 2>${ERROR_TMP})  == "TRUE" ]]; do
@@ -576,7 +578,7 @@ for b in $(seq 1 $[ $batches ]); do
 
     # 1.1 Test for average cpu load:
 	if [[ $VARCO_SPLIT_MAP_check_cpu_overload == "TRUE" ]]; then
-		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load before running on samples batch #$b ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load before running on samples batch #$b every $CPU_CHECK_INTERVAL seconds until $CPU_CHECK_TIMEOUT_HR timeout ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 		cpu_load_failed_msg="[CPU load] Failed checking for average cpu load before running on samples batch #$b."	
 		timeout=$CPU_CHECK_TIMEOUT		
 		until [[ $(isCpuAvailable 2 2 2>${ERROR_TMP})  == "TRUE" ]]; do
@@ -974,7 +976,7 @@ for b in $(seq 1 $[ $batches ]); do
 		exit_on_error "$ERROR_TMP" "$pid_list_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 	done
 
-	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Waiting for $command_name processes to exit until $(echo |awk -v time=${WAITALL_TIMEOUT} '{print strftime("%Hh:%Mm:%Ss", time, 1)}') timeout ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Waiting for $command_name processes to exit until $WAITALL_TIMEOUT_HR timeout ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 	#waitall "${PIDS_ARR[@]}" 2>${ERROR_TMP}
 	waitalluntiltimeout "${PIDS_ARR[@]}" 2>${ERROR_TMP}
 	egrep "exited" ${ERROR_TMP} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -1229,7 +1231,7 @@ for b in $(seq 1 $[ $batches ]); do
 			exit_on_error "$ERROR_TMP" "$pid_list_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 		done
 
-		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Waiting for $cmd processes to exit until $(echo |awk -v time=${WAITALL_TIMEOUT} '{print strftime("%Hh:%Mm:%Ss", time, 1)}') timeout ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Waiting for $cmd processes to exit until $WAITALL_TIMEOUT_HR timeout ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 		#waitall "${PIDS_ARR[@]}" 2>${ERROR_TMP}
 		waitalluntiltimeout "${PIDS_ARR[@]}" 2>${ERROR_TMP}
 		egrep "exited" ${ERROR_TMP} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
