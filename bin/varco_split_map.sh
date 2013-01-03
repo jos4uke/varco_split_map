@@ -100,7 +100,7 @@ ERROR_TMP="/tmp/$(basename ${0%.*})_error_${USER}_$DATE.log"
 PREREQUISITES_MSG="You need to copy the user configuration file to your working directory
                 and configure the options before running this script.
                 To copy the user configuration template file, issue this command in your terminal:
-                \$ cp ${VARCO_SPLIT_MAP_USER_CONFIG} .
+                \$ cp ${DEV_VARCO_SPLIT_MAP_USER_CONFIG} .
                 Then use any editor (emacs, gedit, nano, vi, etc.) to open it and configure the options.
                 Save your changes, and you are ready to run the script."
 
