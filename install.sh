@@ -87,16 +87,18 @@ else
 fi
 
 cd  $PROGRAM_VERSION_DIR/${PROGRAM%.*}_$PROGRAM_VERSION/ 2>$ERROR_LOG
-rm -rf usr/local/test 2>$ERROR_LOG
-for f in $(find . -name \* -print 2>$ERROR_LOG); do
+rm -rf usr/local/test usr/local/install.sh 2>>$ERROR_LOG
+for f in $(find . -name \* -print 2>>$ERROR_LOG); do
     echo -e "$(date '+%F %T') cp $f in /$f" | tee -a $ERROR_LOG 2>&1
-    cp --parents $f / 2>$ERROR_LOG
+    cp --parents $f / 2>>$ERROR_LOG
 done
 
 # set privileges
 echo -ne "$(date '+%F %T') Setting executable privileges on $PROGRAM script ..." | tee -a $ERROR_LOG 2>&1
-chmod 755 $PREFIX/bin/$PROGRAM 2>$ERROR_LOG
+chmod 755 $PREFIX/bin/$PROGRAM 2>>$ERROR_LOG
 echo -e "OK" | tee -a $ERROR_LOG 2>&1
+
+cat $ERROR_LOG 2>&1
 
 echo
 echo "NOTE: You can get more information about $PROGRAM pipeline installation in $ERROR_LOG."
