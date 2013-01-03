@@ -1,18 +1,42 @@
 #! /bin/bash
 
-# TODO: add license copyright 2012
-
 #
 # VARCO_SPLIT_MAP
 #
-# Author: Joseph Tran <Joseph.Tran@versailles.inra.fr>
-#
-# date: 2012-12-18
-#
-# Description: This script performs reads mapping in batch mode by splitting given samples in several batches
-#              and run sequentially each batch to avoid cpu overload and running out of disk space 
-#
 
+# Copyright 2012 Joseph Tran <Joseph.Tran@versailles.inra.fr>
+
+# This software is a computer program whose purpose is to:
+# - perform reads mapping in batch mode by splitting given samples in several batches
+#   and run sequentially each batch to avoid cpu overload and running out of disk space.
+
+# This software is governed by the CeCILL license, Version 2.0 (the "License"), under French law and
+# abiding by the rules of distribution of free software.  You can  use, 
+# modify and/ or redistribute the software under the terms of the CeCILL
+# license, Version 2.0 (the "License"), as circulated by CEA, CNRS and INRIA at the following URL
+# "http://www.cecill.info/licences/Licence_CeCILL_V2-en.txt". 
+
+# As a counterpart to the access to the source code and  rights to copy,
+# modify and redistribute granted by the license, users are provided only
+# with a limited warranty  and the software's author,  the holder of the
+# economic rights,  and the successive licensors  have only  limited
+# liability. 
+
+# In this respect, the user's attention is drawn to the risks associated
+# with loading,  using,  modifying and/or developing or reproducing the
+# software by the user in light of its specific status of free software,
+# that may mean  that it is complicated to manipulate,  and  that  also
+# therefore means  that it is reserved for developers  and  experienced
+# professionals having in-depth computer knowledge. Users are therefore
+# encouraged to load and test the software's suitability as regards their
+# requirements in conditions enabling the security of their systems and/or 
+# data to be ensured and,  more generally, to use and operate it in the 
+# same conditions as regards security. 
+
+# The fact that you are presently reading this means that you have had
+# knowledge of the CeCILL license, Version 2.0 (the "License"), and that you accept its terms.
+
+# Date: 2012-12-18
 VERSION=dev
 
 ########################
@@ -105,10 +129,13 @@ exit_on_error()
 [[ $# -le 1 || $# -gt "$ARGS" ]] && { printf %s "\
 Program: $(basename $0)
 Version: $VERSION
-Author: Joseph Tran, IJPB Bioinformatics Dev Team
-Contact: Joseph.Tran@versailles.inra.fr
 
-TODO: add license copyright 2012
+Copyright 2012 Joseph Tran <Joseph.Tran@versailles.inra.fr>
+
+Licensed under the CeCILL License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.cecill.info/licences/Licence_CeCILL_V2-en.txt
 
 Usage: $(basename $0) samples_root_dir job_tag recipient_email_addr
 
@@ -886,7 +913,7 @@ for b in $(seq 1 $[ $batches ]); do
 		exit_on_error "$CURRENT_MAPPING_ERROR" "$cli_options_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 		opts="${gsnap_cli_options[@]}"
 		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] OK Successfully build mapping command line options for current batch sample $CURRENT_BATCH_SUBDIR." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] $command_name options: $opts" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] $command_name options: $opts" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 		echo "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Building $command_name mapping command line for current batch sample $CURRENT_BATCH_SUBDIR ..." | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1	
 		gsnap_out=$CURRENT_SAMPLE_NAME\_gsnap_out_b$b\_s$s.sam
