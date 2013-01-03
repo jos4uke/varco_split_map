@@ -263,6 +263,21 @@ isDiskSpaceAvailable()
 }
 
 #-------------------------------------------------------------------------
+# Function : sendEmailBasic recipient subject message [files_to_attach]
+# Purpose  : send an email
+sendEmailBasic()
+{
+	recipient=$1
+	subject=$2
+	msg=$3
+	shift 3
+	[[ -n "$@" ]] && files=("$@")
+	export EMAIL="Joseph.Tran@versailles.inra.fr"
+
+	echo -e "$msg" | mutt -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
+}
+
+#-------------------------------------------------------------------------
 # Function : sendEmail recipient subject message [files_to_attach]
 # Purpose  : send an email
 sendEmail()
@@ -324,7 +339,25 @@ $AUTHOR_INFOS"
 
 }
 
-
+#-------------------------------------------------------------------------
+# Function : buildTimeCmd command_name_string log_dir_output
+# Purpose  : build the time command string to monitor the given command_name_string and save output to the log_dir_output
+buildTimeCmd()
+{
+	cmd_name=$1
+	log_dir=$2
+	format="command                   : %C
+elapsed real time         : %E [hours:]minutes:seconds,
+used time by user         : %U seconds,
+used time by system       : %S seconds,
+cpu percent               : %P \%,
+average total memory      : %K KiloBytes,
+average size of data area : %D KiloBytes, 
+file inputs               : %I,
+file outputs              : %O,
+exit status               : %x"
+	echo -e "/usr/bin/time -f \"$format\" -o $log_dir/${cmd_name// /_}_time.log"
+}
 
 
 

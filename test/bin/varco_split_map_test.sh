@@ -252,7 +252,7 @@ testFailedWaitingCliProcesses()
 	echo -e "$(date '+%Y_%m_%d %T') [Mapping] gsnap pids count: ${#pids_arr[@]}" | tee ${stdoutF} 2>&1
 	echo -e "$(date '+%Y_%m_%d %T') [Mapping] gsnap pids list: ${pids_arr[@]}" | tee -a ${stdoutF} 2>&1
 	for p in "${pids_arr[@]}"; do
-		echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>{stderrF})
+		echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>${stderrF})
 	done
 	exit_on_error
 	WAITALL_DELAY=60
@@ -397,7 +397,7 @@ testFailedWaitingCliProcesses()
 		echo -e "$(date '+%Y_%m_%d %T') [Conversion] $cmd pids count: ${#pids_arr[@]}" | tee ${stdoutF} 2>&1
 		echo -e "$(date '+%Y_%m_%d %T') [Conversion] $cmd pids list: ${pids_arr[@]}" | tee -a ${stdoutF} 2>&1		
 		for p in "${pids_arr[@]}"; do
-			echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>{stderrF})
+			echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>${stderrF})
 		done
 		exit_on_error
 		WAITALL_DELAY=60
@@ -503,16 +503,40 @@ testFailedSendEmail()
 	files=($(ls -d -1 $TEST_DATA_ROOT_DIR/DG/*))
 
 	# without attachment files
-	sendEmail $recipient "$subject_noattach" "$message"
+	sendEmailBasic $recipient "$subject_noattach" "$message"
 
 	# with attachment files
-	sendEmail $recipient "$subject_attach" "$message" "${files[@]}"
+	sendEmailBasic $recipient "$subject_attach" "$message" "${files[@]}"
 
 	# with error in subject
-	sendEmail $recipient "$subject_error" "$message"
+	sendEmailBasic $recipient "$subject_error" "$message"
 
 	# assertions: TODO
 }
+
+#-------------------------------
+# testFailedBuildTimeCmd
+#
+testFailedBuildTimeCmd()
+{
+	cmd="date"
+	buildTimeCmd $cmd $TEST_OUTPUT_DIR >${stdoutF} 2>${stderrF}
+
+	assertTrue "Expected output to stdout." "[ -s ${stdoutF} ]"
+	[[ -s ${stdoutF} ]] && (echo -e "stdout output:"; cat ${stdoutF} 2>&1)
+	assertFalse "Unexpected output to stderr." "[ -s ${stderrF} ]"
+	[[ -s ${stderrF} ]] && (echo -e "stderr output:"; cat ${stderrF} 2>&1)
+
+	# execute
+	timeCmd=$(cat ${stdoutF} 2>${stderrF})
+	eval "$timeCmd date" 2>${stderrF}
+
+	assertTrue "Expected output to log file: $TEST_OUTPUT_DIR/${cmd// /_}_time.log." "[ -s $TEST_OUTPUT_DIR/${cmd// /_}_time.log ]"
+	[[ -s $TEST_OUTPUT_DIR/${cmd// /_}_time.log ]] && (echo -e "log output:"; cat $TEST_OUTPUT_DIR/${cmd// /_}_time.log 2>&1)
+	assertFalse "Unexpected output to stderr." "[ -s ${stderrF} ]"
+	[[ -s ${stderrF} ]] && (echo -e "stderr output:"; cat ${stderrF} 2>&1)
+}
+
 
 
 
