@@ -51,13 +51,15 @@ MAX_NUMB_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 MAX_NUMB_CORES_ALLOWED=$[$MAX_NUMB_CORES/2]
 MAX_BATCH_SIZE=0
 
-CPU_CHECK_TIMEOUT=57600
+CPU_CHECK_TIMEOUT=86400
 CPU_CHECK_INTERVAL=5
 CPU_CHECK_DELAY=5
 
 DATA_EXPANSION_FACTOR=2
 
 PIDS_ARR=()
+WAITALL_TIMEOUT=86400
+WAITALL_INTERVAL=60
 WAITALL_DELAY=60
 
 LOG_DIR=$JOB_TAG/"log"
@@ -739,7 +741,7 @@ for b in $(seq 1 $[ $batches ]); do
 			[[ $last == "TRUE" ]] && break
 		done
 
-	# waitall: TODO
+	# waitalluntiltimeout: TODO
 	# several commands to wait: fastqc (trimmed=FALSE), trimmomatic, fastqc (trimmed=TRUE)
 
 
@@ -893,7 +895,7 @@ for b in $(seq 1 $[ $batches ]); do
 		gsnap_cli="gsnap $opts $CURRENT_DATA_SAMPLE_DIR/$CURRENT_FASTQ_FORWARD $CURRENT_DATA_SAMPLE_DIR/$CURRENT_FASTQ_REVERSE >$CURRENT_MAPPING_DIR/$gsnap_out 2>${CURRENT_MAPPING_ERROR} &"
 
 		# append time monitoring support
-		timeCmd=$(buildTimeCmd "$command_name" "$CURRENT_MAPPING_LOG" 2>{ERROR_TMP})
+		timeCmd=$(buildTimeCmd "$command_name" "$CURRENT_MAPPING_LOG" 2>${ERROR_TMP})
 		rtrn=$?
 		time_cmd_failed_msg="[Batch mode: mapping] Failed building time command for use with $command_name."		
 		exit_on_error "$ERROR_TMP" "$time_cmd_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
@@ -916,17 +918,21 @@ for b in $(seq 1 $[ $batches ]); do
 	done
 
 	# wait for all gsnap processes batch to finish
-	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] gsnap pids count: ${#PIDS_ARR[@]}" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
-	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] gsnap pids list: ${PIDS_ARR[@]}" | tee -a $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] gsnap pids count: ${#PIDS_ARR[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] gsnap pids list: ${PIDS_ARR[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 	pid_list_failed_msg="[Batch mode: mapping] Failed listing process $p."	
 	for p in "${PIDS_ARR[@]}"; do
-		echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>${ERROR_TMP})
+		#echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>${ERROR_TMP})
+		echo -e $(ps aux | grep $USER | gawk -v pid=$p '$2 ~ pid {print $0}' 2>${ERROR_TMP}) 
 		rtrn=$?
 		exit_on_error "$ERROR_TMP" "$pid_list_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 	done
 
-	waitall "${PIDS_ARR[@]}" 2>${ERROR_TMP}
+	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Waiting for $command_name processes to exit until $(echo |awk -v time=${WAITALL_TIMEOUT} '{print strftime("%Hh:%Mm:%Ss", time, 1)}') timeout ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	#waitall "${PIDS_ARR[@]}" 2>${ERROR_TMP}
+	waitalluntiltimeout "${PIDS_ARR[@]}" 2>${ERROR_TMP}
 	egrep "exited" ${ERROR_TMP} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] All $command_name processes exited." | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 	# check for errors
 	errs=0
@@ -1141,7 +1147,7 @@ for b in $(seq 1 $[ $batches ]); do
 	## run cli
 			if [[ -n $cmd_cli ]]; then
 	### append time monitoring support
-				timeCmd=$(buildTimeCmd "${cmd// /_}" "$CURRENT_MAPPING_LOG" 2>{ERROR_TMP})
+				timeCmd=$(buildTimeCmd "${cmd// /_}" "$CURRENT_MAPPING_LOG" 2>${ERROR_TMP})
 				rtrn=$?
 				time_cmd_failed_msg="[Batch mode: conversion] Failed building time command for use with $cmd."		
 				exit_on_error "$ERROR_TMP" "$time_cmd_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
@@ -1170,14 +1176,18 @@ for b in $(seq 1 $[ $batches ]); do
 		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $cmd pids count: ${#PIDS_ARR[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
 		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $cmd pids list: ${PIDS_ARR[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1		
 		for p in "${PIDS_ARR[@]}"; do
-			echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>${ERROR_TMP})
+			#echo -e $(ps aux | grep $p | grep $USER | grep -v grep 2>${ERROR_TMP})
+			echo -e $(ps aux | grep $USER | gawk -v pid=$p '$2 ~ pid {print $0}' 2>${ERROR_TMP})
 			rtrn=$?
 			pid_list_failed_msg="[Batch mode: conversion] Failed listing $cmd process using its pid."
 			exit_on_error "$ERROR_TMP" "$pid_list_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 		done
 
-		waitall "${PIDS_ARR[@]}" 2>${ERROR_TMP}
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Waiting for $cmd processes to exit until $(echo |awk -v time=${WAITALL_TIMEOUT} '{print strftime("%Hh:%Mm:%Ss", time, 1)}') timeout ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		#waitall "${PIDS_ARR[@]}" 2>${ERROR_TMP}
+		waitalluntiltimeout "${PIDS_ARR[@]}" 2>${ERROR_TMP}
 		egrep "exited" ${ERROR_TMP} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] All $cmd processes exited." | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 	# check for errors
 		errs=0
