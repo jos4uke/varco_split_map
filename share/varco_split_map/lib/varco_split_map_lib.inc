@@ -167,6 +167,49 @@ waitall() {
 }
 
 #-------------------------------------------------------------------------
+# Function : waitalluntiltimeout $pids_array
+# Purpose  : wait for all child processes to finish and log their exit status until timeout, then kill all running out time child processes
+waitalluntiltimeout() {
+  ## Wait for children to exit and indicate whether all exited with 0 status.
+  local errors=0
+  ((t = WAITALL_TIMEOUT))
+  while ((t > 0)); do
+    debug "Processes remaining: $*"
+    for pid in "$@"; do
+      shift
+      if kill -0 "$pid" 2>/dev/null; then
+        debug "$pid is still alive."
+        set -- "$@" "$pid"
+      elif wait "$pid"; then
+		status=$?
+        debug "$pid exited with zero exit status ($status)."
+      else
+		status=$?
+        debug "$pid exited with non-zero exit status ($status)."
+        ((++errors))
+      fi
+    done
+    (("$#" > 0)) || break
+    # TODO: how to interrupt this sleep when a child terminates?
+    sleep ${WAITALL_INTERVAL:-1}
+	((t -= WAITALL_INTERVAL))
+  done
+  if [[ -n "$@" ]]; then
+  for pid in "$@"; do
+    debug "$pid is running out time limit: $WAITALL_TIMEOUT."
+    debug "killing process $pid ..."
+    kill -s SIGTERM $pid && kill -0 $pid
+	sleep ${WAITALL_DELAY:-1}
+    kill -s SIGKILL $pid
+    debug "process $pid killed"
+  done
+  fi
+  unset pid status
+  ((errors == 0))
+}
+
+
+#-------------------------------------------------------------------------
 # Function : degug $message_string
 # Purpose  : print a debug message to the standard error
 debug() { echo "$(date '+%Y_%m_%d %T') DEBUG: $*" >&2; }
