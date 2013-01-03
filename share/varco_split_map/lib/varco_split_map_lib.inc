@@ -379,7 +379,7 @@ $([[ -s $CURRENT_CONVERSION_LOGFILE ]] && echo -e "$send_email_conversion_msg")\
 For any contact, please reply to this-email.\n
 $AUTHOR_INFOS"
 
-	echo -e "$send_email_msg" | mutt -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
+	echo -e "$send_email_msg" | mutt -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") -b $EMAIL $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
 
 }
 
