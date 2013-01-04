@@ -507,14 +507,21 @@ testFailedIsCpuAvailable()
 #
 testFailedIsDiskSpaceAvailable()
 {
-	if [[ $(isDiskSpaceAvailable $PWD 2 $TEST_DATA_ROOT_DIR/DG $TEST_DATA_ROOT_DIR/DI 2>${stderrF}) == "TRUE" ]]; then
+	res=$(isDiskSpaceAvailable $PWD 2 $TEST_DATA_ROOT_DIR/DG $TEST_DATA_ROOT_DIR/DI 2>${stderrF})
+	rtrn=$?
+	echo "*** isDiskSpaceAvailable exit status: $rtrn ***"
+	if [[ $res == "TRUE" ]]; then
 		if [[ "$?" == 0 ]]; then
 			echo -e "isDiskSpaceAvailable: TRUE was returned" > ${stdoutF}
 		else
 			echo -e "isDiskSpaceAvailable: non zero exit status" >> ${stderrF}
 		fi
 	else
-		echo -e "isDiskSpaceAvailable: FALSE was returned." >> ${stderrF}
+		if [[ "$?" == 0 ]]; then
+			echo -e "isDiskSpaceAvailable: FALSE was returned." > ${stdoutF}
+		else
+			echo -e "isDiskSpaceAvailable: FALSE and non zero exit status" >> ${stderrF}
+		fi
 	fi
 
 	assertTrue "Expected output to stdout." "[ -s ${stdoutF} ]"
