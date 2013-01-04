@@ -37,7 +37,7 @@
 # knowledge of the CeCILL license, Version 2.0 (the "License"), and that you accept its terms.
 
 # Date: 2012-12-18
-VERSION=v0.1.0
+VERSION=v0.1.1
 
 ########################
 # SECTION CONFIGURATION
@@ -294,26 +294,6 @@ echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo -e "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 #
-# Test for disk space: 
-# warning only about available disk space and if enough space or not to process all samples in data root dir
-#
-echo -e "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
-disk_space_failed_msg="[Disk space] Failed while checking for available disk space for current $JOB_TAG job."
-complete_dataset=($(ls -d -1 $DATA_ROOT_DIR/*))
-if [[ $(isDiskSpaceAvailable $PWD $DATA_EXPANSION_FACTOR "${complete_dataset[@]}" 2>${ERROR_TMP}) == "TRUE" ]]; then
-	rtrn=$?
-	exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"		
-	echo -e "$(date '+%Y_%m_%d %T') [Disk space] OK Enough disk space to process the complete dataset for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
-else
-	rtrn=$?
-	exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
-	echo -e "$(date '+%Y_%m_%d %T') [Disk space] Warning Not enough disk space to process the complete dataset for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
-fi
-echo -e "$(date '+%Y_%m_%d %T') [Disk space] available disk space on working directory partition:\n$(df -h $PWD)" | tee -a $LOG_DIR/$LOGFILE 2>&1
-echo -e "$(date '+%Y_%m_%d %T') [Disk space] dataset expected disk space expansion for data expansion factor $DATA_EXPANSION_FACTOR:\n$(du -shc "${complete_dataset[@]}" | tail -n 1 | awk '{print $1}') x $DATA_EXPANSION_FACTOR" | tee -a $LOG_DIR/$LOGFILE 2>&1
-echo -e "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space done" | tee -a $LOG_DIR/$LOGFILE 2>&1
-
-#
 # Check for DATA_ROOT_DIR existence
 #
 echo "$(date '+%Y_%m_%d %T') [Data root directory] Checking $DATA_ROOT_DIR directory ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -324,6 +304,26 @@ else
 	echo -e $data_root_dir_failed_msg 2>&1 >$ERROR_TMP	
 	exit_on_error "$ERROR_TMP" "$data_root_dir_failed_msg" 1 "$LOG_DIR/$LOGFILE"
 fi
+
+#
+# Test for disk space: 
+# warning only about available disk space and if enough space or not to process all samples in data root dir
+#
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+disk_space_failed_msg="[Disk space] Failed while checking for available disk space for current $JOB_TAG job."
+complete_dataset=($(ls -d -1 $DATA_ROOT_DIR/*))
+res=$(isDiskSpaceAvailable $PWD $DATA_EXPANSION_FACTOR "${complete_dataset[@]}" 2>${ERROR_TMP})
+rtrn=$?
+if [[ $res == "TRUE" ]]; then
+	exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"		
+	echo -e "$(date '+%Y_%m_%d %T') [Disk space] OK Enough disk space to process the complete dataset for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
+else
+	exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+	echo -e "$(date '+%Y_%m_%d %T') [Disk space] Warning Not enough disk space to process the complete dataset for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
+fi
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] available disk space on working directory partition:\n$(df -h $PWD)" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] dataset expected disk space expansion for data expansion factor $DATA_EXPANSION_FACTOR:\n$(du -shc "${complete_dataset[@]}" | tail -n 1 | awk '{print $1}') x $DATA_EXPANSION_FACTOR" | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo -e "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 #
 # Test for absence of user config file
@@ -516,12 +516,12 @@ fastq_subdirs=($(for subdir in "${subdirs[@]}"; do
 #
 echo -e "$(date '+%Y_%m_%d %T') [Disk space] Checking for available disk space only for fastq subdirs ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 disk_space_failed_msg="[Disk space] Failed while checking for available disk space only for fastq subdirs."
-if [[ $(isDiskSpaceAvailable $PWD $DATA_EXPANSION_FACTOR "${fastq_subdirs[@]}" 2>${ERROR_TMP}) == "TRUE" ]]; then
-	rtrn=$?
+res=$(isDiskSpaceAvailable $PWD $DATA_EXPANSION_FACTOR "${fastq_subdirs[@]}" 2>${ERROR_TMP})
+rtrn=$?
+if [[ $res == "TRUE" ]]; then
 	exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"		
 	echo -e "$(date '+%Y_%m_%d %T') [Disk space] OK Enough disk space to process only fastq subdirs for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
 else
-	rtrn=$?
 	exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 	echo -e "$(date '+%Y_%m_%d %T') [Disk space] Warning Not enough disk space to process only fastq subdirs for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
 fi
@@ -612,12 +612,12 @@ for b in $(seq 1 $[ $batches ]); do
 	# Last batch sample: have a break!
 		[[ $last == "TRUE" ]] && break
 	done))
-	if [[ $(isDiskSpaceAvailable $PWD $DATA_EXPANSION_FACTOR "${samples_batch_dirs[@]}" 2>${ERROR_TMP}) == "TRUE" ]]; then
-		rtrn=$?
+	res=$(isDiskSpaceAvailable $PWD $DATA_EXPANSION_FACTOR "${samples_batch_dirs[@]}" 2>${ERROR_TMP})
+	rtrn=$?
+	if [[ $res == "TRUE" ]]; then
 		exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"		
 		echo -e "$(date '+%Y_%m_%d %T') [Disk space] OK Enough disk space to process only samples batch #$b for data expansion factor $DATA_EXPANSION_FACTOR." | tee -a $LOG_DIR/$LOGFILE 2>&1
 	else
-		rtrn=$?
 		exit_on_error "$ERROR_TMP" "$disk_space_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 		disk_space_runout_msg="[Disk space] Warning Not enough disk space to process only samples batch #$b for data expansion factor $DATA_EXPANSION_FACTOR. Abort running this pipeline."
 		echo -e "$(date '+%Y_%m_%d %T') [Disk space] available disk space on working directory partition:\n$(df -h $PWD)" >$ERROR_TMP
@@ -1333,6 +1333,40 @@ for b in $(seq 1 $[ $batches ]); do
 		fi
 	done
 
+	# find and remove all sam/unsorted unindexed bam output files in $JOB_TAG directory
+	if [[ $VARCO_SPLIT_MAP_clean == "TRUE" ]]; then
+		echo -e "$(date '+%Y_%m_%d %T') [Cleaning] Removing all sam output files from $WORKING_DIR/$JOB_TAG directory ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+		#find $WORKING_DIR/$JOB_TAG -type f -name "*.sam" -exec rm -f {} \;
+		sam_files=($(find $WORKING_DIR/$JOB_TAG -type f -name "*.sam" 2>${ERROR_TMP}))
+		rtrn=$?	
+		sam_listing_failed_msg="[Cleaning] Failed listing sam files in $WORKING_DIR/$JOB_TAG."
+		exit_on_error "$ERROR_TMP" "$sam_listing_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+		# remove sam files		
+		for s in "${sam_files[@]}"; do
+			echo -ne "$(date '+%Y_%m_%d %T') [Cleaning] removing $s file ... "
+			rm -f $s 2>${ERROR_TMP}
+			rtrn=$?
+			sam_rm_failed_msg="[Cleaning] Failed removing $s file."
+			exit_on_error "$ERROR_TMP" "$sam_rm_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+			echo -e "done"
+		done
+		echo -e "$(date '+%Y_%m_%d %T') [Cleaning] Removing all unsorted and unindexed bam output files from $WORKING_DIR/$JOB_TAG directory ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+		# remove unsorted and unindexed bam files
+		for s in "${sam_files[@]}"; do
+			uib=${s%.*}.bam
+			bam_rm_failed_msg="[Cleaning] Failed removing $uib file."
+			echo -ne "$(date '+%Y_%m_%d %T') [Cleaning] removing $uib file ... "
+			m=$(echo $uib | egrep -v "sorted.bam$" | egrep -v "bai$" 2>${ERROR_TMP})
+			rtrn=$?
+			exit_on_error "$ERROR_TMP" "$bam_rm_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+			[[ -n $m ]] && rm -f "$uib" 2>${ERROR_TMP}
+			rtrn=$?
+			exit_on_error "$ERROR_TMP" "$bam_rm_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+			echo -e "done"
+		done
+		echo -e "$(date '+%Y_%m_%d %T') [Cleaning] All sam, and unsorted and unindexed bam output files was deleted from $WORKING_DIR/$JOB_TAG directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	fi
+
     # Unshifting the current batch samples from fastq subdirs array
     echo -e "$(date '+%Y_%m_%d %T') [Batch mode] remaining subdirs count before unshifting: ${#subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
     #echo -e "batch_size - 1: $[$VARCO_SPLIT_MAP_batch_size -1]" >> $LOG_DIR/$LOGFILE 2>&1 # for testing purpose
@@ -1361,25 +1395,6 @@ done
 #
 # Clean:
 #
-
-# find and remove all sam output files in $JOB_TAG directory
-if [[ $VARCO_SPLIT_MAP_clean == "TRUE" ]]; then
-	echo -e "$(date '+%Y_%m_%d %T') [Cleaning] Removing all sam output files from $WORKING_DIR/$JOB_TAG directory ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
-	#find $WORKING_DIR/$JOB_TAG -type f -name "*.sam" -exec rm -f {} \;
-	sam_files=($(find $WORKING_DIR/$JOB_TAG -type f -name "*.sam" 2>${ERROR_TMP}))
-	rtrn=$?	
-	sam_listing_failed_msg="[Cleaning] Failed listing sam files in $WORKING_DIR/$JOB_TAG."
-	exit_on_error "$ERROR_TMP" "$sam_listing_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
-	for s in "${sam_files[@]}"; do
-		echo -ne "$(date '+%Y_%m_%d %T') [Cleaning] removing $s file ... "
-		rm -f $s 2>${ERROR_TMP}
-		rtrn=$?
-		sam_rm_failed_msg="[Cleaning] Failed removing $s file."
-		exit_on_error "$ERROR_TMP" "$sam_rm_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
-		echo -e "done"
-	done
-	echo -e "$(date '+%Y_%m_%d %T') [Cleaning] All sam output files was deleted from $WORKING_DIR/$JOB_TAG directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-fi
 
 # unset environment variables with used namespace
 echo -ne "$(date '+%Y_%m_%d %T') [Cleaning] Unsetting all environment variables using namespace: $NAMESPACE ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
