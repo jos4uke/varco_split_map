@@ -522,6 +522,38 @@ testFailedIsDiskSpaceAvailable()
 	[[ -s ${stderrF} ]] && (echo -e "stderr output:"; cat ${stderrF} 2>&1)
 }
 
+#----------------------------------------------
+# testFailedIsDiskSpaceAvailableForSubdirsList
+#
+testFailedIsDiskSpaceAvailableForSubdirsList()
+{
+	complete_dataset=($(ls -d -1 $COMPLETE_DATA_ROOT_DIR/*))
+	echo -e "partition: $(df -k $PWD | tail -n 1 | awk '{print $4}')"
+	echo -e "data: $(du -sck "${complete_dataset[@]}" | tail -n 1 | awk '{print $1}')"
+	echo -e "expanded data: $[$(du -sck "${complete_dataset[@]}" | tail -n 1 | awk '{print $1}')*2]"
+	res=$(isDiskSpaceAvailable $PWD 2 "${complete_dataset[@]}" 2>${stderrF})
+	rtrn=$?
+	echo "*** isDiskSpaceAvailable exit status: $rtrn ***"
+
+	if [[ $res == "TRUE" ]]; then
+		if [[ "$rtrn" == 0 ]]; then
+			echo -e "isDiskSpaceAvailable: TRUE was returned" > ${stdoutF}
+		else
+			echo -e "isDiskSpaceAvailable: TRUE and non zero exit status" >> ${stderrF}
+		fi
+	else
+		if [[ "$rtrn" == 0 ]]; then
+			echo -e "isDiskSpaceAvailable: FALSE was returned." > ${stdoutF}
+		else
+			echo -e "isDiskSpaceAvailable: FALSE and non zero exit status" >> ${stderrF}		
+		fi
+	fi
+
+	assertTrue "Expected output to stdout." "[ -s ${stdoutF} ]"
+	assertFalse "Unexpected output to stderr." "[ -s ${stderrF} ]"
+	[[ -s ${stderrF} ]] && (echo -e "stderr output:"; cat ${stderrF} 2>&1)
+}
+
 #-------------------------------
 # testFailedSendEmail
 #
@@ -606,6 +638,8 @@ oneTimeSetUp()
     USER_CONFIG_FILE="../etc/varco_split_map_user.config"
 
 	TEST_DATA_ROOT_DIR="../data/SEQUENCES"
+
+	COMPLETE_DATA_ROOT_DIR="/data/temp_projects/AZM/SEQUENCES"
 }
 
 setUp()

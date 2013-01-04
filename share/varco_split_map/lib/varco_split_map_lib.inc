@@ -327,10 +327,12 @@ isDiskSpaceAvailable()
 
 	# compare
 	if [[ "$data_dirs_expanded_disk_space" -ge "$avail_disk_space" ]]; then
-		echo FALSE
+		echo "FALSE"
+
 	else
-		echo TRUE
+		echo "TRUE"
 	fi
+	return 0
 }
 
 #-------------------------------------------------------------------------
