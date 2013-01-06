@@ -468,7 +468,8 @@ exit_on_timeout()
 	else
 	# Be nice, post SIGTERM first.
     # The 'exit 0' below will be executed if any preceeding command fails.
-		echo -e "$(date '+%Y_%m_%d %T') [Timeout exit] process infos:\n$(ps aux | grep $pid | grep -v grep)" >>$log
+		echo -e "$(date '+%Y_%m_%d %T') [Timeout exit] Process infos:\n$(ps aux | grep $pid | grep -v grep)" >>$log
+		echo -e "$(date '+%Y_%m_%d %T') [Timeout exit] Process $pid has reached timeout limit $timeout ... will exit"
 		echo -e "$(date '+%Y_%m_%d %T') [Timeout exit] Process pid=$pid killed." >>$log
 		kill -s SIGTERM $pid && kill -0 $pid || return 0
 		sleep $delay
