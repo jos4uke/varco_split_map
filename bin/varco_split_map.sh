@@ -37,7 +37,7 @@
 # knowledge of the CeCILL license, Version 2.0 (the "License"), and that you accept its terms.
 
 # Date: 2012-12-18
-VERSION=v0.1.1
+VERSION=v0.1.2
 
 ########################
 # SECTION CONFIGURATION
@@ -86,7 +86,7 @@ CORES_SYS_AMOUNT=2
 DATA_EXPANSION_FACTOR=2
 
 PIDS_ARR=()
-WAITALL_TIMEOUT=86400
+WAITALL_TIMEOUT=259200
 WAITALL_INTERVAL=60
 WAITALL_DELAY=60
 WAITALL_TIMEOUT_HR=$(echo $WAITALL_TIMEOUT | gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')
@@ -982,6 +982,16 @@ for b in $(seq 1 $[ $batches ]); do
 	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] Waiting for $command_name processes to exit until $WAITALL_TIMEOUT_HR timeout ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 	#waitall "${PIDS_ARR[@]}" 2>${ERROR_TMP}
 	waitalluntiltimeout "${PIDS_ARR[@]}" 2>${ERROR_TMP}
+
+	# check for timeout killed processes
+	killed_pids=($(egrep "killed" ${ERROR_TMP} 2>>${ERROR_TMP}; rtrn=$?))
+	list_killed_failed_msg="[Batch mode: mapping] Failed listing killed $command_name processes in $ERROR_TMP."
+	exit_on_error "$ERROR_TMP" "$list_killed_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+	if [[ -n "${killed_pids[@]}" ]]; then
+		timeout_failed_msg="[Batch mode: mapping] Some $command_name processes were killed after reaching defined  $WAITALL_TIMEOUT_HR timeout."
+		exit_on_error "$ERROR_TMP" "$timeout_failed_msg" 1 "$LOG_DIR/$LOGFILE"		
+	fi
+
 	egrep "exited" ${ERROR_TMP} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] All $command_name processes exited." | tee -a $LOG_DIR/$LOGFILE 2>&1
 
@@ -1065,6 +1075,7 @@ for b in $(seq 1 $[ $batches ]); do
 		mapping_err_failed_msg="[Batch mode: mapping] some errors occured while gsnap processing samples for batch #$b."
 		echo -e "$(date '+%Y_%m_%d %T') $mapping_err_failed_msg" | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] refer to $CURRENT_MAPPING_ERROR file for details." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: mapping] refer also to $ERROR_TMP file for further details." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		exit_on_error "$CURRENT_MAPPING_ERROR" "$mapping_err_failed_msg" 1 "$LOG_DIR/$LOGFILE"
 	fi
 
@@ -1237,6 +1248,16 @@ for b in $(seq 1 $[ $batches ]); do
 		echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] Waiting for $cmd processes to exit until $WAITALL_TIMEOUT_HR timeout ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
 		#waitall "${PIDS_ARR[@]}" 2>${ERROR_TMP}
 		waitalluntiltimeout "${PIDS_ARR[@]}" 2>${ERROR_TMP}
+
+		# check for timeout killed processes
+		killed_pids=($(egrep "killed" ${ERROR_TMP} 2>>${ERROR_TMP}; rtrn=$?))
+		list_killed_failed_msg="[Batch mode: conversion] Failed listing killed $cmd processes in $ERROR_TMP."
+		exit_on_error "$ERROR_TMP" "$list_killed_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+		if [[ -n "${killed_pids[@]}" ]]; then
+			timeout_failed_msg="[Batch mode: conversion] Some $cmd processes were killed after reaching defined  $WAITALL_TIMEOUT_HR timeout."
+			exit_on_error "$ERROR_TMP" "$timeout_failed_msg" 1 "$LOG_DIR/$LOGFILE"		
+		fi
+
 		egrep "exited" ${ERROR_TMP} 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 	echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] All $cmd processes exited." | tee -a $LOG_DIR/$LOGFILE 2>&1
 
