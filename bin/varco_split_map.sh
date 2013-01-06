@@ -108,25 +108,6 @@ MAPPER_VERSION=$(gsnap --version 2>&1 | awk -F"\n" 'BEGIN{info=""}; {info=(info 
 
 AUTHOR_INFOS="Joseph Tran\nIJPB Bioinformatics Development Team\nContact: Joseph.Tran@versailles.inra.fr"
 
-# local functions
-exit_on_error()
-{
-	err=$1
-	msg=$2
-	status=$3
-	log=$4
-	if [[ "$status" -ne 0 ]]; then
-		echo -e "$(date '+%Y_%m_%d %T') $msg" | tee -a $err 2>&1 | tee -a $log 2>&1
-		echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $status." | tee -a $err 2>&1 | tee -a $log 2>&1
-		echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] Tail error output:" | tee -a $log 2>&1
-		echo -e "... $(tail -n 10 $err)" 2>&1 | tee -a $log 2>&1
-    	echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $err." | tee -a $log 2>&1
-		# send an email
-		job_error_msg="$JOB_TAG job error: $msg\nExit status: $status\nMore details can be found in $(readlink -f $err)\nLast error output:\n... $(tail -n 10 $err)"
-		[[ -n $RECIPIENT ]] && sendEmail $RECIPIENT "[$(basename ${0%.*})] $JOB_TAG job error" "$job_error_msg" 
-		exit $status
-	fi
-}
 
 #==============================================
 # TEST if enough args else print usage message
