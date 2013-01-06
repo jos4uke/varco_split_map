@@ -348,8 +348,9 @@ sendEmailBasic()
 	[[ -n "$@" ]] && files=("$@")
 	export EMAIL="Joseph.Tran@versailles.inra.fr"
 	export REPLYTO="Joseph.Tran@versailles.inra.fr"
+	export realname="varco_split_map Administrator"
 
-	echo -e "$msg" | mutt -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
+	echo -e "$msg" | mutt -e "set realname=\"$realname\"" -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
 }
 
 #-------------------------------------------------------------------------
@@ -364,6 +365,7 @@ sendEmail()
 	[[ -n "$@" ]] && files=("$@")
 	export EMAIL="Joseph.Tran@versailles.inra.fr"
 	export REPLYTO="Joseph.Tran@versailles.inra.fr"
+	export realname="varco_split_map Administrator"
 
 	[[ -s $VARCO_SPLIT_MAP_USER_CONFIG_JOB ]] && send_email_config_msg=$(echo -e "## Job user config file\nHere are the configuration parameters used for running this job:\n$(cat $VARCO_SPLIT_MAP_USER_CONFIG_JOB | egrep -v "^$")")
 
@@ -414,7 +416,7 @@ $([[ -s $CURRENT_CONVERSION_LOGFILE ]] && echo -e "$send_email_conversion_msg")\
 For any contact, please reply to $REPLYTO.\n
 $AUTHOR_INFOS"
 
-	echo -e "$send_email_msg" | mutt -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") -b $EMAIL $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
+	echo -e "$send_email_msg" | mutt -e "set realname=\"$realname\"" -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") -b $EMAIL $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
 
 }
 
@@ -430,6 +432,7 @@ sendEmailJobLaunched()
 	[[ -n "$@" ]] && files=("$@")
 	export EMAIL="Joseph.Tran@versailles.inra.fr"
 	export REPLYTO="Joseph.Tran@versailles.inra.fr"
+	export realname="varco_split_map Administrator"
 
 	[[ -s $VARCO_SPLIT_MAP_USER_CONFIG_JOB ]] && send_email_config_msg=$(echo -e "## Job user config file\nHere are the configuration parameters used for running this job:\n$(cat $VARCO_SPLIT_MAP_USER_CONFIG_JOB | egrep -v "^$")")
 
@@ -464,7 +467,7 @@ $([[ -s $ERROR_TMP ]] && echo -e "$send_email_err_msg")\n
 For any contact, please reply to $REPLYTO.\n
 $AUTHOR_INFOS"
 
-	echo -e "$send_email_msg" | mutt -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") -b $EMAIL $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
+	echo -e "$send_email_msg" | mutt -e "set realname=\"$realname\"" -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") -b $EMAIL $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
 
 }
 
