@@ -550,7 +550,7 @@ echo "$(date '+%Y_%m_%d %T') [Batch mode] Computing number of batches to run ...
 if [[ "${#subdirs[@]}" -le "$VARCO_SPLIT_MAP_batch_size" ]]; then
 	batches=1
 else
-	batches=$(echo "${#subdirs[@]} $VARCO_SPLIT_MAP_batch_size" | awk '{print int( ($1/$2) + 1 )}' 2>ERROR_TMP)
+	batches=$(echo "${#subdirs[@]} $VARCO_SPLIT_MAP_batch_size" | awk '{print int( ($1/$2) + 1 )}' 2>$ERROR_TMP)
 	rtrn=$?
 	batches_failed_msg="[Batch mode] Failed computing the number of batches expected to be run."
 	exit_on_error "$ERROR_TMP" "$batches_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
