@@ -434,6 +434,28 @@ exit status               : %x"
 }
 
 #-------------------------------------------------------------------------
+# Function : exit_on_error err msg status log 
+# Purpose  : check if current process has to exit when checking for exit status, if different of 0 exits with error msg send to log with err file reference for details
+exit_on_error()
+{
+	err=$1
+	msg=$2
+	status=$3
+	log=$4
+	if [[ "$status" -ne 0 ]]; then
+		echo -e "$(date '+%Y_%m_%d %T') $msg" | tee -a $err 2>&1 | tee -a $log 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $status." | tee -a $err 2>&1 | tee -a $log 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] Tail error output:" | tee -a $log 2>&1
+		echo -e "... $(tail -n 10 $err)" 2>&1 | tee -a $log 2>&1
+    	echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $err." | tee -a $log 2>&1
+		# send an email
+		job_error_msg="$JOB_TAG job error: $msg\nExit status: $status\nMore details can be found in $(readlink -f $err)\nLast error output:\n... $(tail -n 10 $err)"
+		[[ -n $RECIPIENT ]] && sendEmail $RECIPIENT "[$(basename ${0%.*})] $JOB_TAG job error" "$job_error_msg" 
+		exit $status
+	fi
+}
+
+#-------------------------------------------------------------------------
 # Function : exit_on_timeout pid log_file timeout interval delay 
 # Purpose  : force a process with given pid to exit if running time exceeds given timeout
 exit_on_timeout()
