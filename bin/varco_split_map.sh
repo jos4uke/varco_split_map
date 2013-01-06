@@ -47,7 +47,7 @@ VERSION=v0.1.3
 
 PROD_PREFIX="/usr/local"
 DEV_PREFIX="$(pwd)/.."
-PREFIX=$DEV_PREFIX # TO BE CHANGED WHEN SWITCHING TO PROD
+PREFIX=$PROD_PREFIX # TO BE CHANGED WHEN SWITCHING TO PROD
 . $PREFIX/share/varco_split_map/lib/varco_split_map_lib.inc
 
 # Set variables
@@ -247,6 +247,8 @@ exit 1; }
 
 echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Start running the pipeline (version: $VERSION)." | tee $ERROR_TMP 2>&1
 echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Executed command: $0 $*" | tee -a $ERROR_TMP 2>&1
+
+
 
 #
 # Create a directory named with JOB_TAG value, to save all outputs 
