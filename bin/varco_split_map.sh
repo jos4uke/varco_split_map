@@ -37,7 +37,7 @@
 # knowledge of the CeCILL license, Version 2.0 (the "License"), and that you accept its terms.
 
 # Date: 2012-12-18
-VERSION=v0.1.2
+VERSION=v0.1.3
 
 ########################
 # SECTION CONFIGURATION
@@ -47,7 +47,7 @@ VERSION=v0.1.2
 
 PROD_PREFIX="/usr/local"
 DEV_PREFIX="$(pwd)/.."
-PREFIX=$PROD_PREFIX # TO BE CHANGED WHEN SWITCHING TO PROD
+PREFIX=$DEV_PREFIX # TO BE CHANGED WHEN SWITCHING TO PROD
 . $PREFIX/share/varco_split_map/lib/varco_split_map_lib.inc
 
 # Set variables
