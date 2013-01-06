@@ -363,15 +363,15 @@ sendEmail()
 	[[ -n "$@" ]] && files=("$@")
 	export EMAIL="Joseph.Tran@versailles.inra.fr"
 
-	send_email_config_msg=$(echo -e "## Job user config file\nHere are the configuration parameters used for running this job:\n$(cat $VARCO_SPLIT_MAP_USER_CONFIG_JOB | egrep -v "^$")")
+	[[ -s $VARCO_SPLIT_MAP_USER_CONFIG_JOB ]] && send_email_config_msg=$(echo -e "## Job user config file\nHere are the configuration parameters used for running this job:\n$(cat $VARCO_SPLIT_MAP_USER_CONFIG_JOB | egrep -v "^$")")
 
 	send_email_log_msg=$(echo -e "# Main job log file\nHere are the sampled last lines logged from $(readlink -f "$LOG_DIR/$LOGFILE") log file:\n...\n$(tail -n 10 $LOG_DIR/$LOGFILE)")
 
 	send_email_err_msg=$(echo -e "# Main job error log file\nHere are the sampled last lines logged from $(readlink -f $ERROR_TMP) log file\n...\n$(tail -n 10 $ERROR_TMP)")
 
-	send_email_mapping_msg=$(echo -e "# Last sample batch mapping log file\nHere are the sampled last lines logged from $(readlink -f $CURRENT_MAPPING_LOGFILE) log file\n...\n$(tail -n 10 $CURRENT_MAPPING_LOGFILE)")
+	[[ -s $CURRENT_MAPPING_LOGFILE ]] && send_email_mapping_msg=$(echo -e "# Last sample batch mapping log file\nHere are the sampled last lines logged from $(readlink -f $CURRENT_MAPPING_LOGFILE) log file\n...\n$(tail -n 10 $CURRENT_MAPPING_LOGFILE)")
 
-	send_email_conversion_msg=$(echo -e "# Last sample batch format conversion log file\nHere are the sampled last lines logged from $(readlink -f $CURRENT_CONVERSION_LOGFILE) log file\n...\n$(tail -n 10 $CURRENT_CONVERSION_LOGFILE)")
+	[[ -s $CURRENT_CONVERSION_LOGFILE ]] && send_email_conversion_msg=$(echo -e "# Last sample batch format conversion log file\nHere are the sampled last lines logged from $(readlink -f $CURRENT_CONVERSION_LOGFILE) log file\n...\n$(tail -n 10 $CURRENT_CONVERSION_LOGFILE)")
 
 	send_email_msg="Dear $(getent passwd | grep $USER | gawk -F: '{print $5}'),\n
 You receive this email because you ran the $(basename ${0}) script on ${DATE} on $HOSTNAME.\n
@@ -392,14 +392,16 @@ Filtered excluded but fastq sub-directories count: "${#fastq_subdirs[@]}"
 Filtered excluded but fastq sub-directories listing: "${fastq_subdirs[@]}"\n
 # Batches infos
 Total number of batches: $batches
-Batch size: $VARCO_SPLIT_MAP_batch_size 
+Batch size: $([[ -n $VARCO_SPLIT_MAP_batch_size ]] && echo $VARCO_SPLIT_MAP_batch_size)
+$(if [[ -n $batches  && -n $b ]]; then
 $(if (( "$b" < "$batches" )); then
 	export batch_prefix=Current
 else
 	export batch_prefix=Last
 fi
 echo -e "$batch_prefix batch "id:" $b"
-echo -e "$batch_prefix batch samples listing: ${samples_batch_dirs[@]}")\n
+echo -e "$batch_prefix batch samples listing:" $([[ -n "${samples_batch_dirs[@]}" ]] && echo ${samples_batch_dirs[@]}))\n
+fi)
 # LOGS
 $([[ -s $LOG_DIR/$LOGFILE ]] && echo -e "$send_email_log_msg")\n
 $([[ -s $ERROR_TMP ]] && echo -e "$send_email_err_msg")\n
@@ -431,6 +433,28 @@ file inputs               : %I,
 file outputs              : %O,
 exit status               : %x"
 	echo -e "/usr/bin/time -f \"$format\" -o $log_dir/${cmd_name// /_}_time.log"
+}
+
+#-------------------------------------------------------------------------
+# Function : exit_on_error err msg status log 
+# Purpose  : check if current process has to exit when checking for exit status, if different of 0 exits with error msg send to log with err file reference for details
+exit_on_error()
+{
+	err=$1
+	msg=$2
+	status=$3
+	log=$4
+	if [[ "$status" -ne 0 ]]; then
+		echo -e "$(date '+%Y_%m_%d %T') $msg" | tee -a $err 2>&1 | tee -a $log 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] Exits the pipeline, with error code $status." | tee -a $err 2>&1 | tee -a $log 2>&1
+		echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] Tail error output:" | tee -a $log 2>&1
+		echo -e "... $(tail -n 10 $err)" 2>&1 | tee -a $log 2>&1
+    	echo -e "$(date '+%Y_%m_%d %T') [Pipeline error] More details can be found in $err." | tee -a $log 2>&1
+		# send an email
+		job_error_msg="$JOB_TAG job error: $msg\nExit status: $status\nMore details can be found in $(readlink -f $err)\nLast error output:\n... $(tail -n 10 $err)"
+		[[ -n $RECIPIENT ]] && sendEmail $RECIPIENT "[$(basename ${0%.*})] $JOB_TAG job error" "$job_error_msg" 
+		exit $status
+	fi
 }
 
 #-------------------------------------------------------------------------
@@ -468,7 +492,8 @@ exit_on_timeout()
 	else
 	# Be nice, post SIGTERM first.
     # The 'exit 0' below will be executed if any preceeding command fails.
-		echo -e "$(date '+%Y_%m_%d %T') [Timeout exit] process infos:\n$(ps aux | grep $pid | grep -v grep)" >>$log
+		echo -e "$(date '+%Y_%m_%d %T') [Timeout exit] Process infos:\n$(ps aux | grep $pid | grep -v grep)" >>$log
+		echo -e "$(date '+%Y_%m_%d %T') [Timeout exit] Process $pid has reached timeout limit $timeout ... will exit"
 		echo -e "$(date '+%Y_%m_%d %T') [Timeout exit] Process pid=$pid killed." >>$log
 		kill -s SIGTERM $pid && kill -0 $pid || return 0
 		sleep $delay
