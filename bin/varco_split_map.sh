@@ -47,7 +47,7 @@ VERSION=dev
 
 PROD_PREFIX="/usr/local"
 DEV_PREFIX="$(pwd)/.."
-PREFIX=$DEV_PREFIX # TO BE CHANGED WHEN SWITCHING TO PROD
+PREFIX=$PROD_PREFIX # TO BE CHANGED WHEN SWITCHING TO PROD
 . $PREFIX/share/varco_split_map/lib/varco_split_map_lib.inc
 
 # Set variables
