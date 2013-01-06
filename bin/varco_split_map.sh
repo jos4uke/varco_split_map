@@ -229,10 +229,6 @@ exit 1; }
 echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Start running the pipeline (version: $VERSION)." | tee $ERROR_TMP 2>&1
 echo "$(date '+%Y_%m_%d %T') [$(basename $0)] Executed command: $0 $*" | tee -a $ERROR_TMP 2>&1
 
-# send an email
-job_launched_msg="$JOB_TAG job launched at $DATE."
-[[ -n $RECIPIENT ]] && sendEmail $RECIPIENT "[$(basename ${0%.*})] $job_launched_msg" "$job_launched_msg"
-
 #
 # Create a directory named with JOB_TAG value, to save all outputs 
 #
@@ -560,6 +556,10 @@ else
 	exit_on_error "$ERROR_TMP" "$batches_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 fi
 echo "$(date '+%Y_%m_%d %T') [Batch mode] $batches computed batche(s) expected to be run." | tee -a $LOG_DIR/$LOGFILE 2>&1
+
+# send an email
+job_launched_msg="$JOB_TAG job launched at $DATE."
+[[ -n $RECIPIENT ]] && sendEmailJobLaunched $RECIPIENT "[$(basename ${0%.*})] $job_launched_msg" "$job_launched_msg"
 
 # 1. Iterate over batches
 for b in $(seq 1 $[ $batches ]); do
