@@ -347,6 +347,7 @@ sendEmailBasic()
 	shift 3
 	[[ -n "$@" ]] && files=("$@")
 	export EMAIL="Joseph.Tran@versailles.inra.fr"
+	export REPLYTO="Joseph.Tran@versailles.inra.fr"
 
 	echo -e "$msg" | mutt -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
 }
@@ -362,6 +363,7 @@ sendEmail()
 	shift 3
 	[[ -n "$@" ]] && files=("$@")
 	export EMAIL="Joseph.Tran@versailles.inra.fr"
+	export REPLYTO="Joseph.Tran@versailles.inra.fr"
 
 	[[ -s $VARCO_SPLIT_MAP_USER_CONFIG_JOB ]] && send_email_config_msg=$(echo -e "## Job user config file\nHere are the configuration parameters used for running this job:\n$(cat $VARCO_SPLIT_MAP_USER_CONFIG_JOB | egrep -v "^$")")
 
@@ -372,6 +374,14 @@ sendEmail()
 	[[ -s $CURRENT_MAPPING_LOGFILE ]] && send_email_mapping_msg=$(echo -e "# Last sample batch mapping log file\nHere are the sampled last lines logged from $(readlink -f $CURRENT_MAPPING_LOGFILE) log file\n...\n$(tail -n 10 $CURRENT_MAPPING_LOGFILE)")
 
 	[[ -s $CURRENT_CONVERSION_LOGFILE ]] && send_email_conversion_msg=$(echo -e "# Last sample batch format conversion log file\nHere are the sampled last lines logged from $(readlink -f $CURRENT_CONVERSION_LOGFILE) log file\n...\n$(tail -n 10 $CURRENT_CONVERSION_LOGFILE)")
+
+	if [[ -n $batches && -n $b ]]; then
+		if (( b < batches )); then
+			batch_prefix=Current
+		else	
+			batch_prefix=Last
+		fi
+	fi
 
 	send_email_msg="Dear $(getent passwd | grep $USER | gawk -F: '{print $5}'),\n
 You receive this email because you ran the $(basename ${0}) script on ${DATE} on $HOSTNAME.\n
@@ -393,22 +403,15 @@ Filtered excluded but fastq sub-directories listing: "${fastq_subdirs[@]}"\n
 # Batches infos
 Total number of batches: $batches
 Batch size: $([[ -n $VARCO_SPLIT_MAP_batch_size ]] && echo $VARCO_SPLIT_MAP_batch_size)
-$(if [[ -n $batches  && -n $b ]]; then
-$(if (( "$b" < "$batches" )); then
-	export batch_prefix=Current
-else
-	export batch_prefix=Last
-fi
-echo -e "$batch_prefix batch "id:" $b"
-echo -e "$batch_prefix batch samples listing:" $([[ -n "${samples_batch_dirs[@]}" ]] && echo ${samples_batch_dirs[@]}))\n
-fi)
+$([[ -n $batch_prefix ]] && echo -e "$batch_prefix" batch id: "$b")
+$([[ -n $batch_prefix ]] && echo -e "$batch_prefix" batch samples listing: $([[ -n "${samples_batch_dirs[@]}" ]] && echo "${samples_batch_dirs[@]}"))\n
 # LOGS
 $([[ -s $LOG_DIR/$LOGFILE ]] && echo -e "$send_email_log_msg")\n
 $([[ -s $ERROR_TMP ]] && echo -e "$send_email_err_msg")\n
 $([[ -s $CURRENT_MAPPING_LOGFILE ]] && echo -e "$send_email_mapping_msg")\n
 $([[ -s $CURRENT_CONVERSION_LOGFILE ]] && echo -e "$send_email_conversion_msg")\n
 
-For any contact, please reply to this-email.\n
+For any contact, please reply to $REPLYTO.\n
 $AUTHOR_INFOS"
 
 	echo -e "$send_email_msg" | mutt -s "$subject" $([[ $(echo "$subject" | gawk '{print toupper($0)}') =~ "ERROR" ]] && echo -ne "-c $EMAIL ") -b $EMAIL $([[ -n $files ]] && echo -ne "-a ${files[@]}") -- $recipient
