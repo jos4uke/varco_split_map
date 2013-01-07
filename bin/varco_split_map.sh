@@ -159,8 +159,8 @@ User Configuration File:
                          If batch_size lower or equal to max batch size, then use batch_size value.
                          Else, batch_size equals half max batch size.
     - clean (default=TRUE)
-                         This option allows to clean each sample output directory by removing sam file,
-                         leaving only unsorted, sorted and indexed bam files.
+                         This option allows to clean each sample output directory by removing sam and 
+                         unsorted bam files, keeping only sorted and indexed bam files.
 
   [data] section
     - include_sample_subdirs (default=^.* equivalent to all sample subdirs)
@@ -550,7 +550,7 @@ echo "$(date '+%Y_%m_%d %T') [Batch mode] Computing number of batches to run ...
 if [[ "${#subdirs[@]}" -le "$VARCO_SPLIT_MAP_batch_size" ]]; then
 	batches=1
 else
-	batches=$(echo "${#subdirs[@]} $VARCO_SPLIT_MAP_batch_size" | awk '{print int( ($1/$2) + 1 )}' 2>$ERROR_TMP)
+	batches=$(echo "${#subdirs[@]} $VARCO_SPLIT_MAP_batch_size" | awk '{print int( ($1/$2) + 0.5 )}' 2>$ERROR_TMP)
 	rtrn=$?
 	batches_failed_msg="[Batch mode] Failed computing the number of batches expected to be run."
 	exit_on_error "$ERROR_TMP" "$batches_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
