@@ -263,13 +263,12 @@ fi
 echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load every $CPU_CHECK_INTERVAL seconds until $CPU_CHECK_TIMEOUT_HR timeout ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 cpu_load_failed_msg="[CPU load] Failed checking for average cpu load."	
 timeout=$CPU_CHECK_TIMEOUT
-until [[ $(isCpuAvailable $CORES_REDUC_FACTOR $SYS_CORES_AMOUNT 2>${ERROR_TMP})  == "TRUE" ]]; do
-	rtrn=$?
+until [[ $(isCpuAvailable $CORES_REDUC_FACTOR $SYS_CORES_AMOUNT 2>${ERROR_TMP}; rtrn=$?) == "TRUE" ]]; do
 	exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
-	echo -e "." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	timeout=$(exit_on_timeout $$ "$LOG_DIR/$LOGFILE" $timeout $CPU_CHECK_INTERVAL $CPU_CHECK_DELAY 2>>${ERROR_TMP})
+	echo -ne "." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	timeout=$(exit_on_timeout $$ "$LOG_DIR/$LOGFILE" $timeout $CPU_CHECK_INTERVAL $CPU_CHECK_DELAY 2>>${ERROR_TMP}; rtrn=$?)
+	exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 done
-rtrn=$?
 exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo -e "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
@@ -569,13 +568,12 @@ for b in $(seq 1 $[ $batches ]); do
 		echo -ne "$(date '+%Y_%m_%d %T') [CPU load] Checking for average cpu load before running on samples batch #$b every $CPU_CHECK_INTERVAL seconds until $CPU_CHECK_TIMEOUT_HR timeout ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 		cpu_load_failed_msg="[CPU load] Failed checking for average cpu load before running on samples batch #$b."	
 		timeout=$CPU_CHECK_TIMEOUT		
-		until [[ $(isCpuAvailable $CORES_REDUC_FACTOR $SYS_CORES_AMOUNT 2>${ERROR_TMP})  == "TRUE" ]]; do
-			rtrn=$?
+		until [[ $(isCpuAvailable $CORES_REDUC_FACTOR $SYS_CORES_AMOUNT 2>${ERROR_TMP}; rtrn=$?)  == "TRUE" ]]; do
 			exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 			echo -e "." | tee -a $LOG_DIR/$LOGFILE 2>&1
-			timeout=$(exit_on_timeout $$ "$LOG_DIR/$LOGFILE" $timeout $CPU_CHECK_INTERVAL $CPU_CHECK_DELAY 2>>${ERROR_TMP})
+			timeout=$(exit_on_timeout $$ "$LOG_DIR/$LOGFILE" $timeout $CPU_CHECK_INTERVAL $CPU_CHECK_DELAY 2>>${ERROR_TMP}; rtrn=$?)
+			exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 		done
-		rtrn=$?
 		exit_on_error "$ERROR_TMP" "$cpu_load_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"	
 		echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 		echo -e "$(date '+%Y_%m_%d %T') [CPU load] $(uptime)" | tee -a $LOG_DIR/$LOGFILE 2>&1
