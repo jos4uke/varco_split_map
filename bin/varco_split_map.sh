@@ -159,8 +159,8 @@ User Configuration File:
                          If batch_size lower or equal to max batch size, then use batch_size value.
                          Else, batch_size equals half max batch size.
     - clean (default=TRUE)
-                         This option allows to clean each sample output directory by removing sam file,
-                         leaving only unsorted, sorted and indexed bam files.
+                         This option allows to clean each sample output directory by removing sam and 
+                         unsorted bam files, keeping only sorted and indexed bam files.
 
   [data] section
     - include_sample_subdirs (default=^.* equivalent to all sample subdirs)
