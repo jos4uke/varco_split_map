@@ -300,10 +300,12 @@ isCpuAvailable()
 		if [[ "$c" -ge "$jobCoresMax" ]]; then
 			continue
 		else
-			echo FALSE
+			echo "FALSE"
+			return 0
 		fi
 	done
-	echo TRUE
+	echo "TRUE"
+	return 0
 }
 
 #-------------------------------------------------------------------------
