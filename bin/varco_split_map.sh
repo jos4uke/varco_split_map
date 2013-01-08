@@ -1326,7 +1326,10 @@ for b in $(seq 1 $[ $batches ]); do
 				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] pid status: $pid_status" 2>&1 | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 			fi
 
-			if [[ -z $(tail -n 1 "${CURRENT_CONVERSION_ERROR}" | egrep -v "^$" | egrep "^\[samopen\]" 2>&1) ]]; then
+			samtools_view_info_line_header="samopen"
+			samtools_sort_merge_info_line_header="bam_sort_core"
+
+			if [[ -z $(tail -n 1 "${CURRENT_CONVERSION_ERROR}" | egrep -v "^$" | egrep "^\[$samtools_view_info_line_header|$samtools_sort_merge_info_line_header\]" 2>&1) ]]; then
 				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $CURRENT_SAMPLE_NAME sample error output:" 2>&1 | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1; 
 				cat "${CURRENT_CONVERSION_ERROR}" 2>&1 | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 				let errs=errs+1
