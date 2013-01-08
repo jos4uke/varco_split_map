@@ -90,9 +90,9 @@ get_config_sections()
 {
     typeset config_file=$1
 
-    awk -F '[][]' '
+    egrep "^\[" ${config_file} | awk -F '[][]' '
       NF==3 && $0 ~ /^\[.*\]/ { print $2 }
-      ' ${config_file} 2>&1
+      ' 2>&1
     rtrn=$?
     if [[ $rtrn -ne 0 ]]; then
 	echo -e "$(date '+%Y%m%d %r') [$0] Failed Error parsing configuration sections in ${config_file}." >&2
@@ -120,8 +120,8 @@ set_config_params()
 					Prefix = toupper(Prefix);
           patternConfig = "\\[" Config "]";
        }
-       toupper($0)  ~ patternConfig,(/\[/ && toupper($0) !~ patternConfig)  { 
-          if (/^#/ || /\[/ || NF <2) next;
+       toupper($0)  ~ patternConfig,(/^\[/ && toupper($0) !~ patternConfig)  { 
+          if (/^#/ || /^\[/ || NF <2) next;
           sub(/^[[:space:]]*/, "");
           sub(/[[:space:]]*=[[:space:]]/, "=");
           print Prefix Config"_"$0;
