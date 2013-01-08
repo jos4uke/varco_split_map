@@ -550,16 +550,13 @@ batches_failed_msg="[Batch mode] Failed computing the number of batches expected
 if [[ "${#subdirs[@]}" -le "$VARCO_SPLIT_MAP_batch_size" ]]; then
 	batches=1
 else
-	batches_modulo=$(expr "${#subdirs[@]}" % $VARCO_SPLIT_MAP_batch_size 2>${ERROR_TMP})
-	rtrn=$?
+	batches_modulo=$(expr "${#subdirs[@]}" % $VARCO_SPLIT_MAP_batch_size 2>${ERROR_TMP}; rtrn=$?)
 	exit_on_error "$ERROR_TMP" "$batches_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 	if [[ "$batches_modulo" == 0 ]]; then
-		batches=$(expr "${#subdirs[@]}" / $VARCO_SPLIT_MAP_batch_size 2>${ERROR_TMP})
-		rtrn=$?
+		batches=$(expr "${#subdirs[@]}" / $VARCO_SPLIT_MAP_batch_size 2>${ERROR_TMP}; rtrn=$?)
 		exit_on_error "$ERROR_TMP" "$batches_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 	else
-		batches=$(echo "${#subdirs[@]} $VARCO_SPLIT_MAP_batch_size" | awk '{print int( ($1/$2) + 1 )}' 2>$ERROR_TMP)
-		rtrn=$?
+		batches=$(echo "${#subdirs[@]} $VARCO_SPLIT_MAP_batch_size" | awk '{print int( ($1/$2) + 1 )}' 2>$ERROR_TMP; rtrn=$?)
 		exit_on_error "$ERROR_TMP" "$batches_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 	fi
 fi
