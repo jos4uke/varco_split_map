@@ -546,13 +546,22 @@ readarray -t subdirs < <(printf '%s\0' "${unsorted_subdirs[@]}" | sort -z | xarg
 ## if #subdirs <= batch_size then #batches=1
 ## if #subdirs > batch_size then #batches=ceil(#subdirs/batch_size)
 echo "$(date '+%Y_%m_%d %T') [Batch mode] Computing number of batches to run ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+batches_failed_msg="[Batch mode] Failed computing the number of batches expected to be run."
 if [[ "${#subdirs[@]}" -le "$VARCO_SPLIT_MAP_batch_size" ]]; then
 	batches=1
 else
-	batches=$(echo "${#subdirs[@]} $VARCO_SPLIT_MAP_batch_size" | awk '{print int( ($1/$2) + 0.5 )}' 2>$ERROR_TMP)
+	batches_modulo=$(expr "${#subdirs[@]}" % $VARCO_SPLIT_MAP_batch_size 2>${ERROR_TMP})
 	rtrn=$?
-	batches_failed_msg="[Batch mode] Failed computing the number of batches expected to be run."
 	exit_on_error "$ERROR_TMP" "$batches_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+	if [[ "$batches_modulo" == 0 ]]; then
+		batches=$(expr "${#subdirs[@]}" / $VARCO_SPLIT_MAP_batch_size 2>${ERROR_TMP})
+		rtrn=$?
+		exit_on_error "$ERROR_TMP" "$batches_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+	else
+		batches=$(echo "${#subdirs[@]} $VARCO_SPLIT_MAP_batch_size" | awk '{print int( ($1/$2) + 1 )}' 2>$ERROR_TMP)
+		rtrn=$?
+		exit_on_error "$ERROR_TMP" "$batches_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+	fi
 fi
 echo "$(date '+%Y_%m_%d %T') [Batch mode] $batches computed batche(s) expected to be run." | tee -a $LOG_DIR/$LOGFILE 2>&1
 
@@ -1317,7 +1326,10 @@ for b in $(seq 1 $[ $batches ]); do
 				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] pid status: $pid_status" 2>&1 | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 			fi
 
-			if [[ -z $(tail -n 1 "${CURRENT_CONVERSION_ERROR}" | egrep -v "^$" | egrep "^\[samopen\]" 2>&1) ]]; then
+			samtools_view_info_line_header="samopen"
+			samtools_sort_merge_info_line_header="bam_sort_core"
+
+			if [[ -z $(tail -n 1 "${CURRENT_CONVERSION_ERROR}" | egrep -v "^$" | egrep "^\[$samtools_view_info_line_header|$samtools_sort_merge_info_line_header\]" 2>&1) ]]; then
 				echo -e "$(date '+%Y_%m_%d %T') [Batch mode: conversion] $CURRENT_SAMPLE_NAME sample error output:" 2>&1 | tee -a $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1; 
 				cat "${CURRENT_CONVERSION_ERROR}" 2>&1 | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 				let errs=errs+1
