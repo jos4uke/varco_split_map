@@ -619,7 +619,8 @@ for b in $(seq 1 $[ $batches ]); do
 
 	# 1.3 Iterate over batch samples for getting sample infos
 	last=FALSE 	# for last batch sample
-    echo "$(date '+%Y-%m-%d %T') [Batch mode] Running batch mode on samples batch #$b ..." | tee -a $LOG_DIR/$LOGFILE 2>&1   
+    echo "$(date '+%Y-%m-%d %T') [Batch mode] Running batch mode on samples batch #$b ..." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	batch_start=$(date --date "$(date '+%Y-%m-%d %T')" +%s)   
     for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
 		si=$[$s-1]
 		sdi=$[$si+($b-1)*$VARCO_SPLIT_MAP_batch_size]
@@ -1397,11 +1398,10 @@ for b in $(seq 1 $[ $batches ]); do
 
     # Wait until the last current batch sample finish before launching the next batch
 	echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Processing batch samples #$b has finished without errors." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	#batch_end=$(date '+%Y-%m-%d %T')
-	#batch_elapsed_time=""
-
-	#echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Batch #$b processing elapsed time: $batch_elapsed_time." | tee -a $LOG_DIR/$LOGFILE 2>&1	
-	#echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Elapsed time: $(echo $SECONDS |gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	batch_end=$(date --date "$(date '+%Y-%m-%d %T')" +%s)
+	batch_elapsed_time=$(expr "$batch_end" - "$batch_start" | gawk '{printf("%dd:%02dh:%02dm:%02ds\n",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')
+	echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Batch #$b processing elapsed time: $batch_elapsed_time." | tee -a $LOG_DIR/$LOGFILE 2>&1	
+	echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Elapsed time: $(echo $SECONDS |gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')." | tee -a $LOG_DIR/$LOGFILE 2>&1
 	[[ "$b" -lt "$batches" ]] && echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Will proceed with next batch samples." | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 	# send an email
