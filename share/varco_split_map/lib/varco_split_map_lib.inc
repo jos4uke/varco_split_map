@@ -396,7 +396,7 @@ Working directory: $(readlink -f $WORKING_DIR)
 Job directory: $(readlink -f "$WORKING_DIR/$JOB_TAG")
 Executed command: $EXECUTED_COMMAND
 Program version: $VERSION
-Elapsed time: $(echo |awk -v time="$SECONDS" '{print strftime("%Hh:%Mm:%Ss", time, 1)}')\n
+Elapsed time: $(echo $SECONDS |gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}'\n
 $([[ -s $VARCO_SPLIT_MAP_USER_CONFIG_JOB ]] && echo -e "$send_email_config_msg")
 
 # Data infos
