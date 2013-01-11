@@ -1377,7 +1377,7 @@ for b in $(seq 1 $[ $batches ]); do
 			exit_on_error "$ERROR_TMP" "$bam_rm_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
 			echo -e "done"
 		done
-		echo -e "$(date '+%Y-%m-%d %T') [Cleaning] All sam, and unsorted and unindexed bam output files was deleted from $WORKING_DIR/$JOB_TAG directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
+		echo -e "$(date '+%Y-%m-%d %T') [Cleaning] All sam, and unsorted and unindexed bam output files were deleted from $WORKING_DIR/$JOB_TAG directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
 	fi
 
     # Unshifting the current batch samples from fastq subdirs array
@@ -1397,7 +1397,12 @@ for b in $(seq 1 $[ $batches ]); do
 
     # Wait until the last current batch sample finish before launching the next batch
 	echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Processing batch samples #$b has finished without errors." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	[[ "$batches" -gt 1 ]] && echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Will proceed with next batch samples." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	#batch_end=$(date '+%Y-%m-%d %T')
+	#batch_elapsed_time=""
+
+	#echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Batch #$b processing elapsed time: $batch_elapsed_time." | tee -a $LOG_DIR/$LOGFILE 2>&1	
+	#echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Elapsed time: $(echo $SECONDS |gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	[[ "$b" -lt "$batches" ]] && echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Will proceed with next batch samples." | tee -a $LOG_DIR/$LOGFILE 2>&1
 
 	# send an email
 	batch_completed_msg="Batch #$b completed successfully."
@@ -1423,7 +1428,7 @@ echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 #=====
 echo "$(date '+%Y-%m-%d %T') [$(basename $0)] Executed command: $EXECUTED_COMMAND" | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo -n "$(date '+%Y-%m-%d %T') [$(basename $0)] Elapsed time: " | tee -a $LOG_DIR/$LOGFILE 2>&1
-echo |gawk -v time="$SECONDS" '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}' | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo $SECONDS |gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}' | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo "$(date '+%Y-%m-%d %T') [$(basename $0)] Exits the pipeline." | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo "$(date '+%Y-%m-%d %T') [$(basename $0)] More information about this job can be found in $LOG_DIR/$LOGFILE" | tee -a $LOG_DIR/$LOGFILE 2>&1
 # send an email
