@@ -1075,6 +1075,7 @@ for b in $(seq 1 $[ $batches ]); do
 
 	# 1.6 Conversion: sam to sorted bam
 	echo -e "$(date '+%Y-%m-%d %T') [Batch mode: conversion] Processing sam conversion to sorted indexed bam ... " |  tee -a $LOG_DIR/$LOGFILE 2>&1
+	batch_conversion_start=$(date --date "$(date '+%Y-%m-%d %T')" +%s)
 
 	# for each conversion command
 	view_command="samtools view"
@@ -1343,6 +1344,9 @@ for b in $(seq 1 $[ $batches ]); do
 
 		if [[ $errs == 0 ]]; then		
 			echo -e "$(date '+%Y-%m-%d %T') [Batch mode] all $cmd conversion processes for batch #$b finished without errors." | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+			batch_conversion_end=$(date --date "$(date '+%Y-%m-%d %T')" +%s)
+			batch_conversion_elapsed_time=$(expr "$batch_conversion_end" - "$batch_conversion_start" | gawk '{printf("%dd:%02dh:%02dm:%02ds\n",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')
+			echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Batch #$b conversion elapsed time: $batch_conversion_elapsed_time." | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 		else
 			conversion_err_failed_msg="[Batch mode] some errors occured while $cmd processing samples for batch #$b."
 			echo -e "$(date '+%Y-%m-%d %T') $conversion_err_failed_msg" | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a  $CURRENT_CONVERSION_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
