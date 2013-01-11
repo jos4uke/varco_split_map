@@ -387,7 +387,7 @@ sendEmail()
 		fi
 	fi
 
-	time_elapsed=$($(echo $SECONDS | gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')
+	time_elapsed=$(echo "$SECONDS" |gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')
 
 	send_email_msg="Dear $(getent passwd | grep $USER | gawk -F: '{print $5}'),\n
 You receive this email because you ran the $(basename ${0}) script on ${DATE} on $HOSTNAME.\n
