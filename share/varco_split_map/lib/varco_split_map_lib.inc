@@ -387,6 +387,8 @@ sendEmail()
 		fi
 	fi
 
+	time_elapsed=$(echo "$SECONDS" |gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')
+
 	send_email_msg="Dear $(getent passwd | grep $USER | gawk -F: '{print $5}'),\n
 You receive this email because you ran the $(basename ${0}) script on ${DATE} on $HOSTNAME.\n
 # Message
@@ -396,7 +398,7 @@ Working directory: $(readlink -f $WORKING_DIR)
 Job directory: $(readlink -f "$WORKING_DIR/$JOB_TAG")
 Executed command: $EXECUTED_COMMAND
 Program version: $VERSION
-Elapsed time: $(echo $SECONDS |gawk '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}'\n
+Elapsed time: $time_elapsed\n
 $([[ -s $VARCO_SPLIT_MAP_USER_CONFIG_JOB ]] && echo -e "$send_email_config_msg")
 
 # Data infos
