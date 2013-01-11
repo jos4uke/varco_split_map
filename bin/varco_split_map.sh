@@ -803,7 +803,8 @@ for b in $(seq 1 $[ $batches ]); do
 	fi
 
 	# 1.5 Iterate over batch samples for mapping 
-	
+	batch_mapping_start=$(date --date "$(date '+%Y-%m-%d %T')" +%s)
+
 	# reinitiate last batch sample
 	last=FALSE
 
@@ -1061,6 +1062,9 @@ for b in $(seq 1 $[ $batches ]); do
 
 	if [[ $errs == 0 ]]; then
 		echo -e "$(date '+%Y-%m-%d %T') [Batch mode: mapping] all gsnap processes for batch #$b finished without errors." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
+		batch_mapping_end=$(date --date "$(date '+%Y-%m-%d %T')" +%s)
+		batch_mapping_elapsed_time=$(expr "$batch_mapping_end" - "$batch_mapping_start" | gawk '{printf("%dd:%02dh:%02dm:%02ds\n",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}')
+		echo -e "$(date '+%Y-%m-%d %T') [Batch mode] Batch #$b mapping elapsed time: $batch_mapping_elapsed_time." | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
 	else
 		mapping_err_failed_msg="[Batch mode: mapping] some errors occured while gsnap processing samples for batch #$b."
 		echo -e "$(date '+%Y-%m-%d %T') $mapping_err_failed_msg" | tee -a  $CURRENT_MAPPING_LOGFILE 2>&1 | tee -a $LOG_DIR/$LOGFILE 2>&1
