@@ -1423,7 +1423,7 @@ echo -e "done" | tee -a $LOG_DIR/$LOGFILE 2>&1
 #=====
 echo "$(date '+%Y-%m-%d %T') [$(basename $0)] Executed command: $EXECUTED_COMMAND" | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo -n "$(date '+%Y-%m-%d %T') [$(basename $0)] Elapsed time: " | tee -a $LOG_DIR/$LOGFILE 2>&1
-echo |awk -v time="$SECONDS" '{print strftime("%Hh:%Mm:%Ss", time, 1)}' | tee -a $LOG_DIR/$LOGFILE 2>&1
+echo |gawk -v time="$SECONDS" '{printf("%dd:%02dh:%02dm:%02ds",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}' | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo "$(date '+%Y-%m-%d %T') [$(basename $0)] Exits the pipeline." | tee -a $LOG_DIR/$LOGFILE 2>&1
 echo "$(date '+%Y-%m-%d %T') [$(basename $0)] More information about this job can be found in $LOG_DIR/$LOGFILE" | tee -a $LOG_DIR/$LOGFILE 2>&1
 # send an email
