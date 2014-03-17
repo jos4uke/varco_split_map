@@ -37,7 +37,7 @@
 # knowledge of the CeCILL license, Version 2.0 (the "License"), and that you accept its terms.
 
 # Date: 2012-12-18
-VERSION=v0.1.4
+VERSION=v0.1.5
 
 ########################
 # SECTION CONFIGURATION
