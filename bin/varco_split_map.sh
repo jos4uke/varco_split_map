@@ -1357,39 +1357,57 @@ for b in $(seq 1 $[ $batches ]); do
 
 	# find and remove all sam/unsorted unindexed bam output files in $JOB_TAG directory
 	if [[ $VARCO_SPLIT_MAP_clean == "TRUE" ]]; then
-		echo -e "$(date '+%Y-%m-%d %T') [Cleaning] Removing all sam output files from $WORKING_DIR/$JOB_TAG directory ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
-		#find $WORKING_DIR/$JOB_TAG -type f -name "*.sam" -exec rm -f {} \;
-		sam_files=($(find $WORKING_DIR/$JOB_TAG -type f -name "*.sam" 2>${ERROR_TMP}))
-		rtrn=$?	
-		sam_listing_failed_msg="[Cleaning] Failed listing sam files in $WORKING_DIR/$JOB_TAG."
-		exit_on_error "$ERROR_TMP" "$sam_listing_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
-		# remove sam files		
-		for s in "${sam_files[@]}"; do
-			echo -ne "$(date '+%Y-%m-%d %T') [Cleaning] removing $s file ... "
-			rm -f $s 2>${ERROR_TMP}
-			rtrn=$?
-			sam_rm_failed_msg="[Cleaning] Failed removing $s file."
-			exit_on_error "$ERROR_TMP" "$sam_rm_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
-			echo -e "done"
-		done
-		echo -e "$(date '+%Y-%m-%d %T') [Cleaning] Removing all unsorted and unindexed bam output files from $WORKING_DIR/$JOB_TAG directory ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
-		# remove unsorted and unindexed bam files
-		for s in "${sam_files[@]}"; do
-			uib=${s%.*}.bam
-			bam_rm_failed_msg="[Cleaning] Failed removing $uib file."
-			echo -ne "$(date '+%Y-%m-%d %T') [Cleaning] removing $uib file ... "
-			m=$(echo $uib | egrep -v "sorted.bam$" | egrep -v "bai$" 2>${ERROR_TMP})
-			rtrn=$?
-			exit_on_error "$ERROR_TMP" "$bam_rm_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
-			[[ -n $m ]] && rm -f "$uib" 2>${ERROR_TMP}
-			rtrn=$?
-			exit_on_error "$ERROR_TMP" "$bam_rm_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
-			echo -e "done"
-		done
-		echo -e "$(date '+%Y-%m-%d %T') [Cleaning] All sam, and unsorted and unindexed bam output files were deleted from $WORKING_DIR/$JOB_TAG directory." | tee -a $LOG_DIR/$LOGFILE 2>&1
-	fi
+		echo -e "$(date '+%Y-%m-%d %T') [Cleaning] Removing all sam, all unsorted and unindexed bam output files from $WORKING_DIR/$JOB_TAG directory ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+		LAST_SAMPLE=""
+		# iterate over current batch samples
+		for s in $(seq 1 $VARCO_SPLIT_MAP_batch_size); do
+			si=$[$s-1]
+			sdi=$[$si+($b-1)*$VARCO_SPLIT_MAP_batch_size]
+			if [[ -n ${subdirs[$si]} ]]; then
+				LAST_SAMPLE=$[sdi+1]
+				#echo -e "$(date '+%Y-%m-%d %T') [Cleaning] Current batch sample $sdi, $si: ${subdirs[$si]}"
+				CURRENT_BATCH_SUBDIR=$JOB_TAG/$(basename "${subdirs[$si]}")
+				echo -e "$(date '+%Y-%m-%d %T') [Cleaning] Removing all sam output files from $WORKING_DIR/$CURRENT_BATCH_SUBDIR directory ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
 
-    # Unshifting the current batch samples from fastq subdirs array
+				#find $WORKING_DIR/$JOB_TAG -type f -name "*.sam" -exec rm -f {} \;
+				sam_files=($(find $CURRENT_BATCH_SUBDIR -type f -name "*.sam" 2>${ERROR_TMP}))
+				rtrn=$?	
+				sam_listing_failed_msg="[Cleaning] Failed listing sam files in $CURRENT_BATCH_SUBDIR."
+				exit_on_error "$ERROR_TMP" "$sam_listing_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+				# remove sam files		
+				for sam in "${sam_files[@]}"; do
+					if [[ -e ${sam%.*}.bam ]]; then
+						echo -ne "$(date '+%Y-%m-%d %T') [Cleaning] removing $sam file only if corresponding bam file exists ... "
+						rm -f $sam 2>${ERROR_TMP}
+						rtrn=$?
+						sam_rm_failed_msg="[Cleaning] Failed removing $sam file."
+						exit_on_error "$ERROR_TMP" "$sam_rm_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+						echo -e "done"
+					fi
+				done
+
+				echo -e "$(date '+%Y-%m-%d %T') [Cleaning] Removing all unsorted and unindexed bam output files from $WORKING_DIR/$CURRENT_BATCH_SUBDIR directory ... " | tee -a $LOG_DIR/$LOGFILE 2>&1
+				# remove unsorted and unindexed bam files
+				for sam in "${sam_files[@]}"; do
+					uib=${sam%.*}.bam
+					if [[ -e ${sam%.*}.sorted.bam ]]; then
+						bam_rm_failed_msg="[Cleaning] Failed removing $uib file."
+						echo -ne "$(date '+%Y-%m-%d %T') [Cleaning] removing $uib file only if corresponding sorted bam file exists ... "
+						m=$(echo $uib | egrep -v "sorted.bam$" | egrep -v "bai$" 2>${ERROR_TMP})
+						rtrn=$?
+						exit_on_error "$ERROR_TMP" "$bam_rm_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+						[[ -n $m ]] && rm -f "$uib" 2>${ERROR_TMP}
+						rtrn=$?
+						exit_on_error "$ERROR_TMP" "$bam_rm_failed_msg" $rtrn "$LOG_DIR/$LOGFILE"
+						echo -e "done"
+					fi
+				done
+			fi
+		done
+		echo -e "$(date '+%Y-%m-%d %T') [Cleaning] All sam, and unsorted and unindexed bam output files were deleted from $WORKING_DIR/$JOB_TAG directory for the current batch of samples ($b, 1-$LAST_SAMPLE)." | tee -a $LOG_DIR/$LOGFILE 2>&1
+	fi
+    
+	# Unshifting the current batch samples from fastq subdirs array
     echo -e "$(date '+%Y-%m-%d %T') [Batch mode] remaining subdirs count before unshifting: ${#subdirs[@]}" | tee -a $LOG_DIR/$LOGFILE 2>&1
     #echo -e "batch_size - 1: $[$VARCO_SPLIT_MAP_batch_size -1]" >> $LOG_DIR/$LOGFILE 2>&1 # for testing purpose
     for i in $(seq 0 $[$VARCO_SPLIT_MAP_batch_size -1]); do
